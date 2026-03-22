@@ -11,10 +11,14 @@ typedef enum {
     VAL_BOOL,
     VAL_STRING,
     VAL_FN,
+    VAL_ARRAY,
+    VAL_STRUCT,
     VAL_NIL,
 } AgoValKind;
 
 typedef struct AgoFnVal AgoFnVal;
+typedef struct AgoArrayVal AgoArrayVal;
+typedef struct AgoStructVal AgoStructVal;
 
 typedef struct {
     AgoValKind kind;
@@ -24,11 +28,31 @@ typedef struct {
         bool boolean;
         struct { const char *data; int length; } string;
         AgoFnVal *fn;
+        AgoArrayVal *array;
+        AgoStructVal *strct;
     } as;
 } AgoVal;
 
 struct AgoFnVal {
-    AgoNode *decl;  /* points to the AGO_NODE_FN_DECL AST node */
+    AgoNode *decl;
+};
+
+#define MAX_ARRAY_SIZE 1024
+
+struct AgoArrayVal {
+    AgoVal *elements;
+    int count;
+};
+
+#define MAX_STRUCT_FIELDS 64
+
+struct AgoStructVal {
+    const char *type_name;
+    int type_name_length;
+    const char *field_names[MAX_STRUCT_FIELDS];
+    int field_name_lengths[MAX_STRUCT_FIELDS];
+    AgoVal field_values[MAX_STRUCT_FIELDS];
+    int field_count;
 };
 
 static AgoVal val_int(int64_t v)    { return (AgoVal){VAL_INT,    {.integer = v}}; }
@@ -117,6 +141,8 @@ static bool is_truthy(AgoVal val) {
     case VAL_FLOAT:  return val.as.floating != 0.0;
     case VAL_STRING: return val.as.string.length > 0;
     case VAL_FN:     return true;
+    case VAL_ARRAY:  return val.as.array->count > 0;
+    case VAL_STRUCT: return true;
     }
     return false;
 }
@@ -146,6 +172,28 @@ static void builtin_print(AgoVal val) {
         break;
     case VAL_FN:
         printf("<fn>\n");
+        break;
+    case VAL_ARRAY: {
+        printf("[");
+        for (int i = 0; i < val.as.array->count; i++) {
+            if (i > 0) printf(", ");
+            AgoVal elem = val.as.array->elements[i];
+            switch (elem.kind) {
+            case VAL_INT:    printf("%lld", (long long)elem.as.integer); break;
+            case VAL_FLOAT:  printf("%g", elem.as.floating); break;
+            case VAL_BOOL:   printf("%s", elem.as.boolean ? "true" : "false"); break;
+            case VAL_STRING:
+                if (elem.as.string.length >= 2 && elem.as.string.data[0] == '"')
+                    printf("\"%.*s\"", elem.as.string.length - 2, elem.as.string.data + 1);
+                break;
+            default: printf("..."); break;
+            }
+        }
+        printf("]\n");
+        break;
+    }
+    case VAL_STRUCT:
+        printf("<struct %.*s>\n", val.as.strct->type_name_length, val.as.strct->type_name);
         break;
     }
 }
@@ -260,12 +308,37 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
     }
 
     case AGO_NODE_BINARY: {
+        AgoTokenKind op = node->as.binary.op;
+
+        /* Field access: don't evaluate right side (it's a field name, not an expression) */
+        if (op == AGO_TOKEN_DOT) {
+            AgoVal left = eval_expr(interp, node->as.binary.left);
+            if (ago_error_occurred(interp->ctx)) return val_nil();
+            AgoNode *field_node = node->as.binary.right;
+            if (left.kind == VAL_STRUCT && field_node->kind == AGO_NODE_IDENT) {
+                AgoStructVal *s = left.as.strct;
+                for (int i = 0; i < s->field_count; i++) {
+                    if (ago_str_eq(s->field_names[i], s->field_name_lengths[i],
+                                   field_node->as.ident.name, field_node->as.ident.length)) {
+                        return s->field_values[i];
+                    }
+                }
+                ago_error_set(interp->ctx, AGO_ERR_NAME,
+                              ago_loc(NULL, node->line, node->column),
+                              "no field '%.*s'", field_node->as.ident.length,
+                              field_node->as.ident.name);
+            } else {
+                ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                              ago_loc(NULL, node->line, node->column),
+                              "cannot access field on non-struct value");
+            }
+            return val_nil();
+        }
+
         AgoVal left = eval_expr(interp, node->as.binary.left);
         if (ago_error_occurred(interp->ctx)) return val_nil();
         AgoVal right = eval_expr(interp, node->as.binary.right);
         if (ago_error_occurred(interp->ctx)) return val_nil();
-
-        AgoTokenKind op = node->as.binary.op;
 
         if (left.kind == VAL_INT && right.kind == VAL_INT) {
             int64_t l = left.as.integer, r = right.as.integer;
@@ -316,6 +389,73 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
         return val_nil();
     }
 
+    case AGO_NODE_ARRAY_LIT: {
+        static AgoArrayVal arr_storage[256];
+        static AgoVal elem_storage[4096];
+        static int arr_idx = 0;
+        static int elem_idx = 0;
+        if (arr_idx >= 256) { arr_idx = 0; } /* wrap for simplicity */
+        AgoArrayVal *arr = &arr_storage[arr_idx++];
+        arr->count = node->as.array_lit.count;
+        arr->elements = &elem_storage[elem_idx];
+        for (int i = 0; i < arr->count; i++) {
+            elem_storage[elem_idx++] = eval_expr(interp, node->as.array_lit.elements[i]);
+            if (ago_error_occurred(interp->ctx)) return val_nil();
+            if (elem_idx >= 4096) elem_idx = 0;
+        }
+        AgoVal v;
+        v.kind = VAL_ARRAY;
+        v.as.array = arr;
+        return v;
+    }
+
+    case AGO_NODE_INDEX: {
+        AgoVal obj = eval_expr(interp, node->as.index_expr.object);
+        if (ago_error_occurred(interp->ctx)) return val_nil();
+        AgoVal idx = eval_expr(interp, node->as.index_expr.index);
+        if (ago_error_occurred(interp->ctx)) return val_nil();
+        if (obj.kind != VAL_ARRAY) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, node->line, node->column),
+                          "cannot index non-array value");
+            return val_nil();
+        }
+        if (idx.kind != VAL_INT) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, node->line, node->column),
+                          "array index must be an integer");
+            return val_nil();
+        }
+        int i = (int)idx.as.integer;
+        if (i < 0 || i >= obj.as.array->count) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "index %d out of bounds (length %d)", i, obj.as.array->count);
+            return val_nil();
+        }
+        return obj.as.array->elements[i];
+    }
+
+    case AGO_NODE_STRUCT_LIT: {
+        static AgoStructVal struct_storage[128];
+        static int struct_idx = 0;
+        if (struct_idx >= 128) struct_idx = 0;
+        AgoStructVal *s = &struct_storage[struct_idx++];
+        s->type_name = node->as.struct_lit.name;
+        s->type_name_length = node->as.struct_lit.name_length;
+        s->field_count = node->as.struct_lit.field_count;
+        for (int i = 0; i < s->field_count; i++) {
+            s->field_names[i] = node->as.struct_lit.field_names[i];
+            s->field_name_lengths[i] = node->as.struct_lit.field_name_lengths[i];
+            s->field_values[i] = eval_expr(interp, node->as.struct_lit.field_values[i]);
+            if (ago_error_occurred(interp->ctx)) return val_nil();
+        }
+        AgoVal v;
+        v.kind = VAL_STRUCT;
+        v.as.strct = s;
+        return v;
+    }
+
     case AGO_NODE_CALL: {
         if (node->as.call.callee->kind == AGO_NODE_IDENT) {
             const char *name = node->as.call.callee->as.ident.name;
@@ -328,6 +468,24 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
                     if (ago_error_occurred(interp->ctx)) return val_nil();
                     builtin_print(arg);
                 }
+                return val_nil();
+            }
+
+            /* Built-in len */
+            if (ago_str_eq(name, len, "len", 3)) {
+                if (node->as.call.arg_count != 1) {
+                    ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                                  ago_loc(NULL, node->line, node->column),
+                                  "len() takes exactly 1 argument");
+                    return val_nil();
+                }
+                AgoVal arg = eval_expr(interp, node->as.call.args[0]);
+                if (ago_error_occurred(interp->ctx)) return val_nil();
+                if (arg.kind == VAL_ARRAY) return val_int(arg.as.array->count);
+                if (arg.kind == VAL_STRING) return val_int(arg.as.string.length - 2);
+                ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                              ago_loc(NULL, node->line, node->column),
+                              "len() requires an array or string");
                 return val_nil();
             }
 
@@ -436,6 +594,34 @@ static void exec_stmt(AgoInterp *interp, AgoNode *node) {
         }
         break;
     }
+
+    case AGO_NODE_FOR_STMT: {
+        AgoVal iterable = eval_expr(interp, node->as.for_stmt.iterable);
+        if (ago_error_occurred(interp->ctx)) return;
+        if (iterable.kind != VAL_ARRAY) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, node->line, node->column),
+                          "for-in requires an array");
+            return;
+        }
+        int saved = interp->env.count;
+        /* Define loop variable */
+        env_define(&interp->env, node->as.for_stmt.var_name,
+                   node->as.for_stmt.var_name_length, val_nil(), false);
+        int var_idx = interp->env.count - 1;
+        for (int i = 0; i < iterable.as.array->count; i++) {
+            interp->env.values[var_idx] = iterable.as.array->elements[i];
+            exec_stmt(interp, node->as.for_stmt.body);
+            if (ago_error_occurred(interp->ctx)) return;
+            if (interp->has_return) return;
+        }
+        interp->env.count = saved;
+        break;
+    }
+
+    case AGO_NODE_STRUCT_DECL:
+        /* Struct declarations are type definitions — no runtime action needed yet */
+        break;
 
     case AGO_NODE_FN_DECL: {
         /* Register function in environment */

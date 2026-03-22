@@ -308,6 +308,105 @@ AGO_TEST(test_fizzbuzz) {
     AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n2\nfizz\n4\n5\n");
 }
 
+/* ---- Arrays ---- */
+
+AGO_TEST(test_array_literal) {
+    int r = run_and_capture(
+        "let arr = [1, 2, 3]\n"
+        "print(arr)");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "[1, 2, 3]\n");
+}
+
+AGO_TEST(test_array_index) {
+    int r = run_and_capture(
+        "let arr = [10, 20, 30]\n"
+        "print(arr[0])\n"
+        "print(arr[2])");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "10\n30\n");
+}
+
+AGO_TEST(test_array_length) {
+    int r = run_and_capture(
+        "let arr = [1, 2, 3, 4, 5]\n"
+        "print(len(arr))");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "5\n");
+}
+
+AGO_TEST(test_array_out_of_bounds) {
+    int r = run_and_capture(
+        "let arr = [1, 2]\n"
+        "print(arr[5])");
+    AGO_ASSERT(ctx, r != 0);
+}
+
+/* ---- For-in loop ---- */
+
+AGO_TEST(test_for_in_array) {
+    int r = run_and_capture(
+        "let nums = [1, 2, 3]\n"
+        "for n in nums {\n"
+        "    print(n)\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n2\n3\n");
+}
+
+AGO_TEST(test_for_in_sum) {
+    int r = run_and_capture(
+        "let nums = [1, 2, 3, 4, 5]\n"
+        "var total = 0\n"
+        "for n in nums {\n"
+        "    total = total + n\n"
+        "}\n"
+        "print(total)");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "15\n");
+}
+
+AGO_TEST(test_for_in_empty) {
+    int r = run_and_capture(
+        "let empty = []\n"
+        "for x in empty {\n"
+        "    print(x)\n"
+        "}\n"
+        "print(\"done\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "done\n");
+}
+
+/* ---- Structs ---- */
+
+AGO_TEST(test_struct_create) {
+    int r = run_and_capture(
+        "struct Point {\n"
+        "    x: int\n"
+        "    y: int\n"
+        "}\n"
+        "let p = Point { x: 10, y: 20 }\n"
+        "print(p.x)\n"
+        "print(p.y)");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "10\n20\n");
+}
+
+AGO_TEST(test_struct_in_function) {
+    int r = run_and_capture(
+        "struct Point {\n"
+        "    x: int\n"
+        "    y: int\n"
+        "}\n"
+        "fn make_point(x: int, y: int) -> Point {\n"
+        "    return Point { x: x, y: y }\n"
+        "}\n"
+        "let p = make_point(3, 4)\n"
+        "print(p.x + p.y)");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "7\n");
+}
+
 /* ---- Main ---- */
 
 int main(void) {
@@ -355,6 +454,21 @@ int main(void) {
 
     /* Combined */
     AGO_RUN_TEST(&ctx, test_fizzbuzz);
+
+    /* Arrays */
+    AGO_RUN_TEST(&ctx, test_array_literal);
+    AGO_RUN_TEST(&ctx, test_array_index);
+    AGO_RUN_TEST(&ctx, test_array_length);
+    AGO_RUN_TEST(&ctx, test_array_out_of_bounds);
+
+    /* For-in */
+    AGO_RUN_TEST(&ctx, test_for_in_array);
+    AGO_RUN_TEST(&ctx, test_for_in_sum);
+    AGO_RUN_TEST(&ctx, test_for_in_empty);
+
+    /* Structs */
+    AGO_RUN_TEST(&ctx, test_struct_create);
+    AGO_RUN_TEST(&ctx, test_struct_in_function);
 
     AGO_SUMMARY(&ctx);
 }

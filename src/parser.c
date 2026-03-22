@@ -159,7 +159,90 @@ static AgoNode *parse_prefix(AgoParser *p) {
     case AGO_TOKEN_STRING:  return parse_string_literal(p);
     case AGO_TOKEN_TRUE:    return parse_bool_literal(p, true);
     case AGO_TOKEN_FALSE:   return parse_bool_literal(p, false);
-    case AGO_TOKEN_IDENT:   return parse_identifier(p);
+    case AGO_TOKEN_IDENT: {
+        /* Check for struct literal: Name { field: val, ... }
+         * Only if current is { AND the token after { is IDENT followed by : */
+        AgoNode *id = parse_identifier(p);
+        if (!parser_check(p, AGO_TOKEN_LBRACE)) return id;
+        /* Lookahead: save position and check if it's really ident : pattern */
+        {
+            const char *saved_cur = p->lexer.current;
+            int saved_line = p->lexer.line;
+            int saved_col = p->lexer.column;
+            int saved_depth = p->lexer.paren_depth;
+            bool saved_insert = p->lexer.insert_newline;
+            AgoToken saved_token = p->current;
+            /* Advance past { */
+            AgoLexer probe = p->lexer;
+            AgoToken t1 = ago_lexer_next_token(&probe); /* skip { */
+            /* Skip newlines */
+            while (t1.kind == AGO_TOKEN_NEWLINE) t1 = ago_lexer_next_token(&probe);
+            AgoToken t2 = ago_lexer_next_token(&probe);
+            bool is_struct = (t1.kind == AGO_TOKEN_IDENT && t2.kind == AGO_TOKEN_COLON)
+                          || t1.kind == AGO_TOKEN_RBRACE; /* empty struct {} */
+            /* Restore — we only peeked */
+            (void)saved_cur; (void)saved_line; (void)saved_col;
+            (void)saved_depth; (void)saved_insert; (void)saved_token;
+            if (!is_struct) return id;
+        }
+        parser_advance(p); /* consume { */
+        AgoNode *n = ago_ast_new(p->arena, AGO_NODE_STRUCT_LIT, id->line, id->column);
+        if (!n) return NULL;
+        n->as.struct_lit.name = id->as.ident.name;
+        n->as.struct_lit.name_length = id->as.ident.length;
+        const char *fnames[64]; int fname_lens[64];
+        AgoNode *fvals[64]; int fcount = 0;
+        skip_newlines(p);
+        while (!parser_check(p, AGO_TOKEN_RBRACE) && !parser_check(p, AGO_TOKEN_EOF)) {
+            parser_expect(p, AGO_TOKEN_IDENT, "expected field name");
+            if (ago_error_occurred(p->ctx)) return NULL;
+            fnames[fcount] = p->previous.start;
+            fname_lens[fcount] = p->previous.length;
+            parser_expect(p, AGO_TOKEN_COLON, "expected ':' after field name");
+            if (ago_error_occurred(p->ctx)) return NULL;
+            fvals[fcount] = parse_expression(p, PREC_NONE);
+            if (ago_error_occurred(p->ctx)) return NULL;
+            fcount++;
+            skip_newlines(p);
+            if (!parser_match(p, AGO_TOKEN_COMMA)) break;
+            skip_newlines(p);
+        }
+        parser_expect(p, AGO_TOKEN_RBRACE, "expected '}'");
+        n->as.struct_lit.field_count = fcount;
+        if (fcount > 0) {
+            n->as.struct_lit.field_names = ago_arena_alloc(p->arena, sizeof(char*) * (size_t)fcount);
+            n->as.struct_lit.field_name_lengths = ago_arena_alloc(p->arena, sizeof(int) * (size_t)fcount);
+            n->as.struct_lit.field_values = ago_arena_alloc(p->arena, sizeof(AgoNode*) * (size_t)fcount);
+            memcpy(n->as.struct_lit.field_names, fnames, sizeof(char*) * (size_t)fcount);
+            memcpy(n->as.struct_lit.field_name_lengths, fname_lens, sizeof(int) * (size_t)fcount);
+            memcpy(n->as.struct_lit.field_values, fvals, sizeof(AgoNode*) * (size_t)fcount);
+        }
+        return n;
+    }
+    case AGO_TOKEN_LBRACKET: {
+        /* Array literal: [expr, expr, ...] */
+        AgoNode *n = node_new(p, AGO_NODE_ARRAY_LIT);
+        if (!n) return NULL;
+        AgoNode *elems[128]; int count = 0;
+        skip_newlines(p);
+        if (!parser_check(p, AGO_TOKEN_RBRACKET)) {
+            do {
+                skip_newlines(p);
+                elems[count++] = parse_expression(p, PREC_NONE);
+                if (ago_error_occurred(p->ctx)) return NULL;
+                skip_newlines(p);
+            } while (parser_match(p, AGO_TOKEN_COMMA));
+        }
+        parser_expect(p, AGO_TOKEN_RBRACKET, "expected ']'");
+        n->as.array_lit.count = count;
+        if (count > 0) {
+            n->as.array_lit.elements = ago_arena_alloc(p->arena, sizeof(AgoNode*) * (size_t)count);
+            memcpy(n->as.array_lit.elements, elems, sizeof(AgoNode*) * (size_t)count);
+        } else {
+            n->as.array_lit.elements = NULL;
+        }
+        return n;
+    }
     case AGO_TOKEN_LPAREN:  return parse_grouped(p);
     case AGO_TOKEN_NOT:     return parse_unary(p, AGO_TOKEN_NOT);
     case AGO_TOKEN_MINUS:   return parse_unary(p, AGO_TOKEN_MINUS);
@@ -216,6 +299,17 @@ static AgoNode *parse_infix(AgoParser *p, AgoNode *left) {
     /* Function call */
     if (op == AGO_TOKEN_LPAREN) {
         return parse_call(p, left);
+    }
+
+    /* Index access: expr[expr] */
+    if (op == AGO_TOKEN_LBRACKET) {
+        AgoNode *n = node_new(p, AGO_NODE_INDEX);
+        if (!n) return NULL;
+        n->as.index_expr.object = left;
+        n->as.index_expr.index = parse_expression(p, PREC_NONE);
+        if (ago_error_occurred(p->ctx)) return NULL;
+        parser_expect(p, AGO_TOKEN_RBRACKET, "expected ']'");
+        return n;
     }
 
     /* Field access */
@@ -500,6 +594,47 @@ static AgoNode *parse_statement(AgoParser *p) {
     }
     if (parser_match(p, AGO_TOKEN_FN)) {
         return parse_fn_declaration(p);
+    }
+    if (parser_match(p, AGO_TOKEN_STRUCT)) {
+        /* struct Name { field: type \n field: type \n } */
+        parser_expect(p, AGO_TOKEN_IDENT, "expected struct name");
+        if (ago_error_occurred(p->ctx)) return NULL;
+        AgoNode *n = node_new(p, AGO_NODE_STRUCT_DECL);
+        if (!n) return NULL;
+        n->as.struct_decl.name = p->previous.start;
+        n->as.struct_decl.name_length = p->previous.length;
+        skip_newlines(p);
+        parser_expect(p, AGO_TOKEN_LBRACE, "expected '{'");
+        if (ago_error_occurred(p->ctx)) return NULL;
+        const char *fnames[64]; int flens[64];
+        const char *ftypes[64]; int ftlens[64];
+        int fcount = 0;
+        skip_newlines(p);
+        while (!parser_check(p, AGO_TOKEN_RBRACE) && !parser_check(p, AGO_TOKEN_EOF)) {
+            parser_expect(p, AGO_TOKEN_IDENT, "expected field name");
+            if (ago_error_occurred(p->ctx)) return NULL;
+            fnames[fcount] = p->previous.start; flens[fcount] = p->previous.length;
+            parser_expect(p, AGO_TOKEN_COLON, "expected ':'");
+            if (ago_error_occurred(p->ctx)) return NULL;
+            parser_expect(p, AGO_TOKEN_IDENT, "expected field type");
+            if (ago_error_occurred(p->ctx)) return NULL;
+            ftypes[fcount] = p->previous.start; ftlens[fcount] = p->previous.length;
+            fcount++;
+            skip_newlines(p);
+        }
+        parser_expect(p, AGO_TOKEN_RBRACE, "expected '}'");
+        n->as.struct_decl.field_count = fcount;
+        if (fcount > 0) {
+            n->as.struct_decl.field_names = ago_arena_alloc(p->arena, sizeof(char*) * (size_t)fcount);
+            n->as.struct_decl.field_name_lengths = ago_arena_alloc(p->arena, sizeof(int) * (size_t)fcount);
+            n->as.struct_decl.field_types = ago_arena_alloc(p->arena, sizeof(char*) * (size_t)fcount);
+            n->as.struct_decl.field_type_lengths = ago_arena_alloc(p->arena, sizeof(int) * (size_t)fcount);
+            memcpy(n->as.struct_decl.field_names, fnames, sizeof(char*) * (size_t)fcount);
+            memcpy(n->as.struct_decl.field_name_lengths, flens, sizeof(int) * (size_t)fcount);
+            memcpy(n->as.struct_decl.field_types, ftypes, sizeof(char*) * (size_t)fcount);
+            memcpy(n->as.struct_decl.field_type_lengths, ftlens, sizeof(int) * (size_t)fcount);
+        }
+        return n;
     }
 
     /* Expression statement — or assignment if followed by '=' */

@@ -10,7 +10,7 @@
 #define AGO_VERSION "0.1.0"
 
 /* Internal assertion — aborts on failure (for invariant violations, not user errors) */
-#define AGO_ASSERT(cond) do { \
+#define AGO_INTERNAL_ASSERT(cond) do { \
     if (!(cond)) { \
         fprintf(stderr, "ago: internal error: %s (%s:%d)\n", #cond, __FILE__, __LINE__); \
         abort(); \

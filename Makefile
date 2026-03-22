@@ -18,8 +18,8 @@ src/%.o: src/%.c
 tests/test_%: tests/test_%.c $(OBJ)
 	$(CC) $(CFLAGS_DEBUG) -Isrc -o $@ $^
 
-test:
-	@echo "No tests yet"
+test: tests/test_lexer
+	@for t in $^; do echo ""; ./$$t || exit 1; done
 
 clean:
 	rm -f src/*.o src/*.d ago tests/test_lexer tests/test_parser tests/test_typechecker tests/test_interpreter tests/test_integration

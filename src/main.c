@@ -17,6 +17,11 @@ int main(int argc, char *argv[]) {
     }
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
+    if (len < 0) {
+        fprintf(stderr, "ago: cannot read '%s'\n", argv[1]);
+        fclose(f);
+        return 1;
+    }
     fseek(f, 0, SEEK_SET);
     char *source = malloc((size_t)len + 1);
     if (!source) { fclose(f); return 1; }

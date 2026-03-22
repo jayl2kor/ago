@@ -178,8 +178,7 @@ static const AgoKeyword keywords[] = {
 
 static AgoTokenKind lookup_keyword(const char *start, int length) {
     for (size_t i = 0; i < KEYWORD_COUNT; i++) {
-        if (keywords[i].length == length &&
-            memcmp(keywords[i].name, start, (size_t)length) == 0) {
+        if (ago_str_eq(keywords[i].name, keywords[i].length, start, length)) {
             return keywords[i].kind;
         }
     }
@@ -264,11 +263,11 @@ AgoToken ago_lexer_next_token(AgoLexer *lexer) {
     AgoTokenKind kind;
     switch (c) {
     case '(': lexer->paren_depth++; kind = AGO_TOKEN_LPAREN;   break;
-    case ')': lexer->paren_depth--; kind = AGO_TOKEN_RPAREN;   break;
+    case ')': if (lexer->paren_depth > 0) lexer->paren_depth--; kind = AGO_TOKEN_RPAREN; break;
     case '{': kind = AGO_TOKEN_LBRACE;   break;
     case '}': kind = AGO_TOKEN_RBRACE;   break;
     case '[': lexer->paren_depth++; kind = AGO_TOKEN_LBRACKET; break;
-    case ']': lexer->paren_depth--; kind = AGO_TOKEN_RBRACKET; break;
+    case ']': if (lexer->paren_depth > 0) lexer->paren_depth--; kind = AGO_TOKEN_RBRACKET; break;
     case ',': kind = AGO_TOKEN_COMMA;   break;
     case ':': kind = AGO_TOKEN_COLON;   break;
     case '.': kind = AGO_TOKEN_DOT;     break;

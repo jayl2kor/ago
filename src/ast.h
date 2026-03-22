@@ -15,7 +15,6 @@ typedef enum {
     AGO_NODE_UNARY,         /* !x, -x */
     AGO_NODE_BINARY,        /* a + b */
     AGO_NODE_CALL,          /* foo(a, b) */
-    AGO_NODE_FIELD_ACCESS,  /* point.x */
     AGO_NODE_ARRAY_LIT,     /* [1, 2, 3] */
     AGO_NODE_STRUCT_LIT,    /* Point { x: 1, y: 2 } */
 

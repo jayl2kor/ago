@@ -222,10 +222,8 @@ static AgoNode *parse_infix(AgoParser *p, AgoNode *left) {
     if (op == AGO_TOKEN_DOT) {
         parser_expect(p, AGO_TOKEN_IDENT, "expected field name after '.'");
         if (ago_error_occurred(p->ctx)) return NULL;
-        AgoNode *n = node_new(p, AGO_NODE_FIELD_ACCESS);
+        AgoNode *n = node_new(p, AGO_NODE_BINARY);
         if (!n) return NULL;
-        /* Store as binary with DOT op for simplicity */
-        n->kind = AGO_NODE_BINARY;
         n->as.binary.op = AGO_TOKEN_DOT;
         n->as.binary.left = left;
         n->as.binary.right = parse_identifier(p);

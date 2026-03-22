@@ -61,8 +61,7 @@ static bool env_set(AgoEnv *env, const char *name, int length, AgoVal val) {
 static AgoVal *env_get(AgoEnv *env, const char *name, int length) {
     /* Search backward for most recent binding */
     for (int i = env->count - 1; i >= 0; i--) {
-        if (env->name_lengths[i] == length &&
-            memcmp(env->names[i], name, (size_t)length) == 0) {
+        if (ago_str_eq(env->names[i], env->name_lengths[i], name, length)) {
             return &env->values[i];
         }
     }
@@ -169,8 +168,22 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
             case AGO_TOKEN_PLUS:    return val_int(l + r);
             case AGO_TOKEN_MINUS:   return val_int(l - r);
             case AGO_TOKEN_STAR:    return val_int(l * r);
-            case AGO_TOKEN_SLASH:   return val_int(r != 0 ? l / r : 0);
-            case AGO_TOKEN_PERCENT: return val_int(r != 0 ? l % r : 0);
+            case AGO_TOKEN_SLASH:
+                if (r == 0) {
+                    ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                                  ago_loc(NULL, node->line, node->column),
+                                  "division by zero");
+                    return val_nil();
+                }
+                return val_int(l / r);
+            case AGO_TOKEN_PERCENT:
+                if (r == 0) {
+                    ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                                  ago_loc(NULL, node->line, node->column),
+                                  "division by zero");
+                    return val_nil();
+                }
+                return val_int(l % r);
             case AGO_TOKEN_EQ:      return val_bool(l == r);
             case AGO_TOKEN_NEQ:     return val_bool(l != r);
             case AGO_TOKEN_LT:      return val_bool(l < r);
@@ -205,7 +218,7 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
             const char *name = node->as.call.callee->as.ident.name;
             int len = node->as.call.callee->as.ident.length;
 
-            if (len == 5 && memcmp(name, "print", 5) == 0) {
+            if (ago_str_eq(name, len, "print", 5)) {
                 for (int i = 0; i < node->as.call.arg_count; i++) {
                     AgoVal arg = eval_expr(interp, node->as.call.args[i]);
                     if (ago_error_occurred(interp->ctx)) return val_nil();
@@ -245,8 +258,13 @@ static void exec_stmt(AgoInterp *interp, AgoNode *node) {
             val = eval_expr(interp, node->as.var_decl.initializer);
         }
         if (ago_error_occurred(interp->ctx)) return;
-        env_set(&interp->env, node->as.var_decl.name,
-                node->as.var_decl.name_length, val);
+        if (!env_set(&interp->env, node->as.var_decl.name,
+                     node->as.var_decl.name_length, val)) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "too many variables (max %d)", MAX_VARS);
+            return;
+        }
         break;
     }
 

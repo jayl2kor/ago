@@ -22,6 +22,11 @@
     abort(); \
 } while(0)
 
+/* Compare two non-null-terminated string slices */
+static inline bool ago_str_eq(const char *a, int alen, const char *b, int blen) {
+    return alen == blen && memcmp(a, b, (size_t)alen) == 0;
+}
+
 /* Forward declarations of core types */
 typedef struct AgoCtx AgoCtx;
 typedef struct AgoArena AgoArena;

@@ -20,6 +20,7 @@ typedef enum {
 
     /* Statements */
     AGO_NODE_EXPR_STMT,     /* expression as statement */
+    AGO_NODE_ASSIGN_STMT,   /* x = expr */
     AGO_NODE_LET_STMT,      /* let x = expr */
     AGO_NODE_VAR_STMT,      /* var x = expr */
     AGO_NODE_RETURN_STMT,   /* return expr */
@@ -74,6 +75,13 @@ struct AgoNode {
             AgoNode **args;
             int arg_count;
         } call;
+
+        /* AGO_NODE_ASSIGN_STMT */
+        struct {
+            const char *name;
+            int name_length;
+            AgoNode *value;
+        } assign_stmt;
 
         /* AGO_NODE_EXPR_STMT */
         struct { AgoNode *expr; } expr_stmt;

@@ -502,9 +502,27 @@ static AgoNode *parse_statement(AgoParser *p) {
         return parse_fn_declaration(p);
     }
 
-    /* Expression statement */
+    /* Expression statement — or assignment if followed by '=' */
     AgoNode *expr = parse_expression(p, PREC_NONE);
     if (ago_error_occurred(p->ctx)) return NULL;
+
+    if (parser_match(p, AGO_TOKEN_ASSIGN)) {
+        /* Assignment: expr must be an identifier */
+        if (expr->kind != AGO_NODE_IDENT) {
+            ago_error_set(p->ctx, AGO_ERR_SYNTAX,
+                          ago_loc(p->lexer.file, expr->line, expr->column),
+                          "invalid assignment target");
+            return NULL;
+        }
+        AgoNode *n = ago_ast_new(p->arena, AGO_NODE_ASSIGN_STMT, expr->line, expr->column);
+        if (!n) return NULL;
+        n->as.assign_stmt.name = expr->as.ident.name;
+        n->as.assign_stmt.name_length = expr->as.ident.length;
+        n->as.assign_stmt.value = parse_expression(p, PREC_NONE);
+        parser_match(p, AGO_TOKEN_NEWLINE);
+        return n;
+    }
+
     AgoNode *n = ago_ast_new(p->arena, AGO_NODE_EXPR_STMT, expr->line, expr->column);
     if (!n) return NULL;
     n->as.expr_stmt.expr = expr;

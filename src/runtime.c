@@ -168,6 +168,31 @@ void builtin_print(AgoVal val) {
     printf("\n");
 }
 
+/* ---- Trace capture callback (called by ago_error_set) ---- */
+
+void capture_trace(void *data, AgoError *err) {
+    AgoInterp *interp = data;
+    int n = interp->call_depth;
+    if (n > AGO_MAX_TRACE) n = AGO_MAX_TRACE;
+    err->trace_count = n;
+    /* Copy frames innermost-first (most recent call at index 0) */
+    for (int i = 0; i < n; i++) {
+        int src_idx = interp->call_depth - 1 - i;
+        AgoCallFrame *f = &interp->call_frames[src_idx];
+        AgoTraceFrame *t = &err->trace[i];
+        int name_len = f->name_len;
+        if (name_len >= (int)sizeof(t->name)) name_len = (int)sizeof(t->name) - 1;
+        if (f->name && name_len > 0) {
+            memcpy(t->name, f->name, (size_t)name_len);
+            t->name[name_len] = '\0';
+        } else {
+            t->name[0] = '\0';
+        }
+        t->line = f->line;
+        t->column = f->column;
+    }
+}
+
 /* ---- Call user function with pre-evaluated arguments ---- */
 
 AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
@@ -179,6 +204,14 @@ AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
                       "maximum call depth exceeded (limit %d)", MAX_CALL_DEPTH);
         return val_nil();
     }
+
+    /* Push call frame for trace */
+    AgoCallFrame *frame = &interp->call_frames[interp->call_depth];
+    frame->name = fn->decl->as.fn_decl.name;
+    frame->name_len = fn->decl->as.fn_decl.name_length;
+    frame->line = line;
+    frame->column = column;
+
     interp->call_depth++;
 
     AgoNode *decl = fn->decl;

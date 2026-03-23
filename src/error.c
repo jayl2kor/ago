@@ -6,6 +6,9 @@ AgoCtx *ago_ctx_new(void) {
     ctx->has_error = false;
     ctx->error.code = AGO_ERR_NONE;
     ctx->error.message[0] = '\0';
+    ctx->error.trace_count = 0;
+    ctx->trace_cb = NULL;
+    ctx->trace_data = NULL;
     return ctx;
 }
 
@@ -19,11 +22,17 @@ void ago_error_set(AgoCtx *ctx, AgoErrorCode code, AgoSourceLoc loc,
     ctx->has_error = true;
     ctx->error.code = code;
     ctx->error.loc = loc;
+    ctx->error.trace_count = 0;
 
     va_list args;
     va_start(args, fmt);
     vsnprintf(ctx->error.message, sizeof(ctx->error.message), fmt, args);
     va_end(args);
+
+    /* Capture call stack trace if available */
+    if (ctx->trace_cb) {
+        ctx->trace_cb(ctx->trace_data, &ctx->error);
+    }
 }
 
 bool ago_error_occurred(const AgoCtx *ctx) {
@@ -40,6 +49,7 @@ void ago_error_clear(AgoCtx *ctx) {
     ctx->has_error = false;
     ctx->error.code = AGO_ERR_NONE;
     ctx->error.message[0] = '\0';
+    ctx->error.trace_count = 0;
 }
 
 void ago_error_print(const AgoError *err) {
@@ -49,6 +59,16 @@ void ago_error_print(const AgoError *err) {
                 err->loc.file, err->loc.line, err->loc.column, err->message);
     } else {
         fprintf(stderr, "error: %s\n", err->message);
+    }
+    /* Print stack trace */
+    for (int i = 0; i < err->trace_count; i++) {
+        if (err->trace[i].name[0]) {
+            fprintf(stderr, "  in %s() (line %d)\n",
+                    err->trace[i].name, err->trace[i].line);
+        } else {
+            fprintf(stderr, "  in <lambda> (line %d)\n",
+                    err->trace[i].line);
+        }
     }
 }
 

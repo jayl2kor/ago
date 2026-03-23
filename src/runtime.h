@@ -120,6 +120,13 @@ typedef struct {
 #define MAX_CALL_DEPTH 512
 
 typedef struct {
+    const char *name;
+    int name_len;
+    int line;
+    int column;
+} AgoCallFrame;
+
+typedef struct {
     char *path;
     char *source;       /* malloc'd source text — AST tokens point into this */
     AgoArena *arena;    /* AST nodes live here */
@@ -138,6 +145,7 @@ typedef struct {
     jmp_buf return_jmp;
     bool return_jmp_set;
     int call_depth;
+    AgoCallFrame call_frames[MAX_CALL_DEPTH];
 } AgoInterp;
 
 /* ---- runtime.c ---- */
@@ -159,6 +167,9 @@ void gc_collect(AgoInterp *interp);
 bool is_truthy(AgoVal val);
 void print_val_inline(AgoVal val);
 void builtin_print(AgoVal val);
+
+/* Trace capture callback for ago_error_set */
+void capture_trace(void *data, AgoError *err);
 
 AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn, AgoVal *args,
                       int arg_count, int line, int column);

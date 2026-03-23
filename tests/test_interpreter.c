@@ -1170,6 +1170,48 @@ AGO_TEST(test_repl_var_reassign) {
     ago_repl_free(repl);
 }
 
+/* ---- Error stack trace tests ---- */
+
+AGO_TEST(test_error_trace_nested) {
+    AgoCtx *c = ago_ctx_new();
+    ago_run(
+        "fn inner() -> int {\n"
+        "    return 1 / 0\n"
+        "}\n"
+        "fn outer() -> int {\n"
+        "    return inner()\n"
+        "}\n"
+        "outer()\n",
+        "test.ago", c);
+    AGO_ASSERT(ctx, ago_error_occurred(c));
+    const AgoError *err = ago_error_get(c);
+    AGO_ASSERT(ctx, err->trace_count >= 2);
+    ago_ctx_free(c);
+}
+
+AGO_TEST(test_error_trace_top_level) {
+    AgoCtx *c = ago_ctx_new();
+    ago_run("let x = 1 / 0", "test.ago", c);
+    AGO_ASSERT(ctx, ago_error_occurred(c));
+    const AgoError *err = ago_error_get(c);
+    AGO_ASSERT_INT_EQ(ctx, err->trace_count, 0);
+    ago_ctx_free(c);
+}
+
+AGO_TEST(test_error_trace_deep) {
+    AgoCtx *c = ago_ctx_new();
+    ago_run(
+        "fn c_fn() -> int { return 1 / 0 }\n"
+        "fn b_fn() -> int { return c_fn() }\n"
+        "fn a_fn() -> int { return b_fn() }\n"
+        "a_fn()\n",
+        "test.ago", c);
+    AGO_ASSERT(ctx, ago_error_occurred(c));
+    const AgoError *err = ago_error_get(c);
+    AGO_ASSERT(ctx, err->trace_count >= 3);
+    ago_ctx_free(c);
+}
+
 /* ---- Main ---- */
 
 int main(void) {
@@ -1331,6 +1373,11 @@ int main(void) {
     AGO_RUN_TEST(&ctx, test_repl_error_recovery);
     AGO_RUN_TEST(&ctx, test_repl_multiline);
     AGO_RUN_TEST(&ctx, test_repl_var_reassign);
+
+    /* Error stack trace */
+    AGO_RUN_TEST(&ctx, test_error_trace_nested);
+    AGO_RUN_TEST(&ctx, test_error_trace_top_level);
+    AGO_RUN_TEST(&ctx, test_error_trace_deep);
 
     AGO_SUMMARY(&ctx);
 }

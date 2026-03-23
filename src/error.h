@@ -19,17 +19,31 @@ typedef struct {
     int column;
 } AgoSourceLoc;
 
+/* Stack trace frame */
+#define AGO_MAX_TRACE 16
+
+typedef struct {
+    char name[64];  /* function name (copied, not a pointer) */
+    int line;
+    int column;
+} AgoTraceFrame;
+
 /* Error object */
 struct AgoError {
     AgoErrorCode code;
     AgoSourceLoc loc;
     char message[256];
+    AgoTraceFrame trace[AGO_MAX_TRACE];
+    int trace_count;
 };
 
 /* Context that threads through all compiler/runtime phases */
 struct AgoCtx {
     AgoError error;
     bool has_error;
+    /* Trace capture: set by interpreter, called by ago_error_set */
+    void (*trace_cb)(void *data, AgoError *err);
+    void *trace_data;
 };
 
 /* Create and destroy context */

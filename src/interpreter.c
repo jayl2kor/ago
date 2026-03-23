@@ -627,9 +627,16 @@ int ago_interpret(AgoNode *program, const char *filename, AgoCtx *ctx) {
     interp.return_jmp_set = false;
     interp.call_depth = 0;
 
+    /* Set up trace capture so errors include call stacks */
+    ctx->trace_cb = capture_trace;
+    ctx->trace_data = &interp;
+    /* Note: interp is local to this function, valid for its lifetime */
+
     for (int i = 0; i < program->as.program.decl_count; i++) {
         exec_stmt(&interp, program->as.program.decls[i]);
         if (ago_error_occurred(ctx)) {
+            ctx->trace_cb = NULL;
+            ctx->trace_data = NULL;
             module_cache_free(&interp);
             ago_gc_free(gc);
             ago_arena_free(runtime_arena);
@@ -637,6 +644,8 @@ int ago_interpret(AgoNode *program, const char *filename, AgoCtx *ctx) {
         }
     }
 
+    ctx->trace_cb = NULL;
+    ctx->trace_data = NULL;
     module_cache_free(&interp);
     ago_gc_free(gc);
     ago_arena_free(runtime_arena);
@@ -708,6 +717,8 @@ AgoRepl *ago_repl_new(void) {
     repl->interp.return_value = val_nil();
     repl->interp.return_jmp_set = false;
     repl->interp.call_depth = 0;
+    repl->ctx->trace_cb = capture_trace;
+    repl->ctx->trace_data = &repl->interp;
     return repl;
 }
 

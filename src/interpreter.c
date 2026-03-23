@@ -228,8 +228,14 @@ static AgoVal call_user_fn(AgoInterp *interp, AgoFnVal *fn, AgoNode *call_node) 
     }
 
     /* Evaluate arguments before modifying env */
+    if (arg_count > 64) {
+        ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                      ago_loc(NULL, call_node->line, call_node->column),
+                      "too many arguments (max 64)");
+        return val_nil();
+    }
     AgoVal args[64];
-    for (int i = 0; i < arg_count && i < 64; i++) {
+    for (int i = 0; i < arg_count; i++) {
         args[i] = eval_expr(interp, call_node->as.call.args[i]);
         if (ago_error_occurred(interp->ctx)) return val_nil();
     }
@@ -246,11 +252,17 @@ static AgoVal call_user_fn(AgoInterp *interp, AgoFnVal *fn, AgoNode *call_node) 
         *saved_closure_env = interp->env;
         env_init(&interp->env);
         for (int i = 0; i < fn->captured_count; i++) {
-            env_define(&interp->env,
-                       fn->captured_names[i],
-                       fn->captured_name_lengths[i],
-                       fn->captured_values[i],
-                       fn->captured_immutable[i]);
+            if (!env_define(&interp->env,
+                            fn->captured_names[i],
+                            fn->captured_name_lengths[i],
+                            fn->captured_values[i],
+                            fn->captured_immutable[i])) {
+                ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                              ago_loc(NULL, call_node->line, call_node->column),
+                              "too many variables (max %d)", MAX_VARS);
+                interp->env = *saved_closure_env;
+                return val_nil();
+            }
         }
     }
 
@@ -566,19 +578,25 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
         AgoResultVal *rv = subject.as.result;
         int saved_count = interp->env.count;
         AgoVal result;
+        const char *bind_name;
+        int bind_len;
+        AgoNode *body;
         if (rv->is_ok) {
-            env_define(&interp->env,
-                       node->as.match_expr.ok_name,
-                       node->as.match_expr.ok_name_length,
-                       rv->value, true);
-            result = eval_expr(interp, node->as.match_expr.ok_body);
+            bind_name = node->as.match_expr.ok_name;
+            bind_len = node->as.match_expr.ok_name_length;
+            body = node->as.match_expr.ok_body;
         } else {
-            env_define(&interp->env,
-                       node->as.match_expr.err_name,
-                       node->as.match_expr.err_name_length,
-                       rv->value, true);
-            result = eval_expr(interp, node->as.match_expr.err_body);
+            bind_name = node->as.match_expr.err_name;
+            bind_len = node->as.match_expr.err_name_length;
+            body = node->as.match_expr.err_body;
         }
+        if (!env_define(&interp->env, bind_name, bind_len, rv->value, true)) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "too many variables (max %d)", MAX_VARS);
+            return val_nil();
+        }
+        result = eval_expr(interp, body);
         interp->env.count = saved_count;
         return result;
     }

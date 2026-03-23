@@ -24,7 +24,8 @@ AgoArena *ago_arena_new(void) {
 void *ago_arena_alloc(AgoArena *arena, size_t size) {
     if (!arena || size == 0) return NULL;
 
-    /* Align to 8 bytes */
+    /* Align to 8 bytes (guard against overflow near SIZE_MAX) */
+    if (size > SIZE_MAX - 7) return NULL;
     size = (size + 7) & ~(size_t)7;
 
     AgoArenaBlock *block = arena->head;

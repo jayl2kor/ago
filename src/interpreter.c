@@ -4,6 +4,7 @@
 #include "arena.h"
 #include "gc.h"
 #include <setjmp.h>
+#include <limits.h>
 
 /* ---- Runtime Value ---- */
 
@@ -164,6 +165,7 @@ static int env_assign(AgoEnv *env, const char *name, int length, AgoVal val) {
 /* ---- Interpreter state ---- */
 
 #define MAX_MODULES 64
+#define MAX_CALL_DEPTH 512
 
 typedef struct {
     char *path;
@@ -185,6 +187,7 @@ typedef struct {
     AgoVal return_value;
     jmp_buf return_jmp;
     bool return_jmp_set;
+    int call_depth;
 } AgoInterp;
 
 /* Forward declarations */
@@ -254,16 +257,35 @@ static void path_dir(const char *filepath, char *buf, size_t bufsize) {
     buf[len] = '\0';
 }
 
-/* Resolve import path relative to current file. Appends .ago extension. */
-static void resolve_import(const char *base_file, const char *import_path,
+/* Resolve import path relative to current file. Appends .ago extension.
+ * Returns false if path escapes the base directory (path traversal). */
+static bool resolve_import(const char *base_file, const char *import_path,
                            int import_len, char *buf, size_t bufsize) {
+    /* Reject paths containing ".." to prevent directory traversal */
+    for (int i = 0; i < import_len - 1; i++) {
+        if (import_path[i] == '.' && import_path[i + 1] == '.') return false;
+    }
+
     char dir[512];
     path_dir(base_file, dir, sizeof(dir));
+    int written;
     if (dir[0]) {
-        snprintf(buf, bufsize, "%s/%.*s.ago", dir, import_len, import_path);
+        written = snprintf(buf, bufsize, "%s/%.*s.ago", dir, import_len, import_path);
     } else {
-        snprintf(buf, bufsize, "%.*s.ago", import_len, import_path);
+        written = snprintf(buf, bufsize, "%.*s.ago", import_len, import_path);
     }
+    /* Check for truncation */
+    if (written < 0 || (size_t)written >= bufsize) return false;
+
+    /* Canonicalize and verify path stays within base directory */
+    char real_base[PATH_MAX], real_resolved[PATH_MAX];
+    if (!realpath(dir[0] ? dir : ".", real_base)) return false;
+    if (!realpath(buf, real_resolved)) return false;
+    size_t base_len = strlen(real_base);
+    if (strncmp(real_resolved, real_base, base_len) != 0) return false;
+    /* Ensure the char after base prefix is '/' or '\0' */
+    if (real_resolved[base_len] != '/' && real_resolved[base_len] != '\0') return false;
+    return true;
 }
 
 /* Read entire file into malloc'd buffer. Returns NULL on failure. */
@@ -272,6 +294,7 @@ static char *read_file(const char *path) {
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
+    if (len < 0) { fclose(f); return NULL; }
     fseek(f, 0, SEEK_SET);
     char *buf = malloc((size_t)len + 1);
     if (!buf) { fclose(f); return NULL; }
@@ -378,6 +401,14 @@ static void builtin_print(AgoVal val) {
 static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
                              AgoVal *args, int arg_count,
                              int line, int column) {
+    if (interp->call_depth >= MAX_CALL_DEPTH) {
+        ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                      ago_loc(NULL, line, column),
+                      "maximum call depth exceeded (limit %d)", MAX_CALL_DEPTH);
+        return val_nil();
+    }
+    interp->call_depth++;
+
     AgoNode *decl = fn->decl;
     int param_count = decl->as.fn_decl.param_count;
 
@@ -385,6 +416,7 @@ static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
         ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
                       ago_loc(NULL, line, column),
                       "expected %d arguments, got %d", param_count, arg_count);
+        interp->call_depth--;
         return val_nil();
     }
 
@@ -395,6 +427,7 @@ static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
         if (!saved_closure_env) {
             ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
                           ago_loc(NULL, line, column), "out of memory");
+            interp->call_depth--;
             return val_nil();
         }
         *saved_closure_env = interp->env;
@@ -409,6 +442,7 @@ static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
                               ago_loc(NULL, line, column),
                               "too many variables (max %d)", MAX_VARS);
                 interp->env = *saved_closure_env;
+                interp->call_depth--;
                 return val_nil();
             }
         }
@@ -426,6 +460,7 @@ static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
                           "too many variables (max %d)", MAX_VARS);
             if (saved_closure_env) interp->env = *saved_closure_env;
             else interp->env.count = saved_count;
+            interp->call_depth--;
             return val_nil();
         }
     }
@@ -456,6 +491,7 @@ static AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn,
         interp->env.count = saved_count;
     }
 
+    interp->call_depth--;
     return result;
 }
 
@@ -649,6 +685,10 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
             case AGO_TOKEN_NEQ:
                 return val_bool(llen != rlen || memcmp(ldata, rdata, (size_t)llen) != 0);
             case AGO_TOKEN_PLUS: {
+                if (llen > INT_MAX - rlen) {
+                    ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, node->line, node->column), "string too large");
+                    return val_nil();
+                }
                 int total = llen + rlen;
                 char *buf = ago_arena_alloc(interp->arena, (size_t)total);
                 if (!buf) { ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, node->line, node->column), "out of memory"); return val_nil(); }
@@ -911,6 +951,8 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
                     return val_string(copy ? copy : "", copy ? slen : 0);
                 }
                 }
+                if (n < 0) n = 0;
+                if (n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
                 char *s = ago_arena_alloc(interp->arena, (size_t)n);
                 if (s) memcpy(s, buf, (size_t)n);
                 return val_string(s ? s : "", s ? n : 0);
@@ -985,6 +1027,10 @@ static AgoVal eval_expr(AgoInterp *interp, AgoNode *node) {
                     return val_nil();
                 }
                 AgoArrayVal *old = arr_val.as.array;
+                if (old->count >= MAX_ARRAY_SIZE) {
+                    ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, node->line, node->column), "array size limit exceeded (max %d)", MAX_ARRAY_SIZE);
+                    return val_nil();
+                }
                 int new_count = old->count + 1;
                 AgoArrayVal *arr = ago_gc_alloc(interp->gc, sizeof(AgoArrayVal), array_cleanup);
                 if (!arr) { ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, node->line, node->column), "out of memory"); return val_nil(); }
@@ -1253,12 +1299,19 @@ static void exec_stmt(AgoInterp *interp, AgoNode *node) {
         break;
 
     case AGO_NODE_IMPORT: {
-        /* Resolve path relative to current file */
+        /* Resolve path relative to current file — rejects path traversal */
         char resolved[512];
-        resolve_import(interp->file,
-                       node->as.import_stmt.path,
-                       node->as.import_stmt.path_length,
-                       resolved, sizeof(resolved));
+        if (!resolve_import(interp->file,
+                            node->as.import_stmt.path,
+                            node->as.import_stmt.path_length,
+                            resolved, sizeof(resolved))) {
+            ago_error_set(interp->ctx, AGO_ERR_IO,
+                          ago_loc(NULL, node->line, node->column),
+                          "invalid import path '%.*s'",
+                          node->as.import_stmt.path_length,
+                          node->as.import_stmt.path);
+            return;
+        }
 
         /* Skip if already loaded */
         if (module_loaded(interp, resolved)) break;
@@ -1312,7 +1365,14 @@ static void exec_stmt(AgoInterp *interp, AgoNode *node) {
 
         /* Register module — takes ownership of source and arena.
          * Must register before execution to prevent circular imports. */
-        module_register(interp, resolved, mod_source, mod_arena);
+        if (!module_register(interp, resolved, mod_source, mod_arena)) {
+            ago_arena_free(mod_arena);
+            free(mod_source);
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "too many modules (max %d)", MAX_MODULES);
+            return;
+        }
 
         /* Execute module in current interpreter (shares env, gc) */
         const char *saved_file = interp->file;
@@ -1384,6 +1444,7 @@ int ago_interpret(AgoNode *program, const char *filename, AgoCtx *ctx) {
     interp.has_return = false;
     interp.return_value = val_nil();
     interp.return_jmp_set = false;
+    interp.call_depth = 0;
 
     for (int i = 0; i < program->as.program.decl_count; i++) {
         exec_stmt(&interp, program->as.program.decls[i]);

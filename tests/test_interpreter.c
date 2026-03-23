@@ -1022,6 +1022,21 @@ AGO_TEST(test_import_not_found) {
     AGO_ASSERT(ctx, r != 0);
 }
 
+AGO_TEST(test_import_path_traversal) {
+    /* Path traversal must be rejected */
+    setup_test_dir();
+    write_file(TEST_DIR "/evil.ago", "import \"../../etc/passwd\"\n");
+    int r = run_file_and_capture(TEST_DIR "/evil.ago");
+    AGO_ASSERT(ctx, r != 0);
+}
+
+AGO_TEST(test_import_dotdot) {
+    setup_test_dir();
+    write_file(TEST_DIR "/evil2.ago", "import \"../something\"\n");
+    int r = run_file_and_capture(TEST_DIR "/evil2.ago");
+    AGO_ASSERT(ctx, r != 0);
+}
+
 /* ---- Main ---- */
 
 int main(void) {
@@ -1167,6 +1182,8 @@ int main(void) {
     AGO_RUN_TEST(&ctx, test_import_multiple);
     AGO_RUN_TEST(&ctx, test_import_transitive);
     AGO_RUN_TEST(&ctx, test_import_not_found);
+    AGO_RUN_TEST(&ctx, test_import_path_traversal);
+    AGO_RUN_TEST(&ctx, test_import_dotdot);
 
     AGO_SUMMARY(&ctx);
 }

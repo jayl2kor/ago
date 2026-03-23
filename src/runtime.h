@@ -30,7 +30,7 @@ typedef struct AgoArrayVal AgoArrayVal;
 typedef struct AgoStructVal AgoStructVal;
 typedef struct AgoResultVal AgoResultVal;
 
-typedef struct {
+typedef struct AgoVal {
     AgoValKind kind;
     union {
         int64_t integer;
@@ -44,9 +44,14 @@ typedef struct {
     } as;
 } AgoVal;
 
+/* Forward declaration for bytecode chunk */
+typedef struct AgoChunk AgoChunk;
+
 struct AgoFnVal {
     AgoObj obj;     /* GC header */
-    AgoNode *decl;
+    AgoNode *decl;          /* AST node (tree-walk path, NULL for VM-only) */
+    AgoChunk *chunk;        /* bytecode (VM path, NULL for tree-walk) */
+    int arity;              /* parameter count */
     int captured_count;
     const char **captured_names;        /* malloc'd */
     int *captured_name_lengths;         /* malloc'd */

@@ -1212,6 +1212,82 @@ AGO_TEST(test_error_trace_deep) {
     ago_ctx_free(c);
 }
 
+/* ---- Stdlib Tier 2: File I/O ---- */
+
+AGO_TEST(test_read_file) {
+    /* Create a temp file */
+    const char *tmp = "/tmp/ago_test_read.txt";
+    FILE *f = fopen(tmp, "w");
+    fprintf(f, "hello ago");
+    fclose(f);
+
+    char src[256];
+    snprintf(src, sizeof(src),
+        "let r = read_file(\"%s\")\n"
+        "let content = match r {\n"
+        "    ok(s) -> s\n"
+        "    err(e) -> e\n"
+        "}\n"
+        "print(content)\n", tmp);
+    int r = run_and_capture(src);
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "hello ago\n");
+    remove(tmp);
+}
+
+AGO_TEST(test_write_file) {
+    const char *tmp = "/tmp/ago_test_write.txt";
+    char src[256];
+    snprintf(src, sizeof(src),
+        "let r = write_file(\"%s\", \"ago output\")\n"
+        "let ok_val = match r {\n"
+        "    ok(v) -> v\n"
+        "    err(e) -> false\n"
+        "}\n"
+        "print(ok_val)\n", tmp);
+    int r = run_and_capture(src);
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "true\n");
+
+    /* Verify file contents */
+    FILE *f = fopen(tmp, "r");
+    AGO_ASSERT_FATAL(ctx, f != NULL);
+    char buf[64];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
+    buf[n] = '\0';
+    fclose(f);
+    AGO_ASSERT_STR_EQ(ctx, buf, "ago output");
+    remove(tmp);
+}
+
+AGO_TEST(test_read_file_not_found) {
+    int r = run_and_capture(
+        "let r = read_file(\"/tmp/ago_nonexistent_12345.txt\")\n"
+        "let msg = match r {\n"
+        "    ok(s) -> \"ok\"\n"
+        "    err(e) -> \"error\"\n"
+        "}\n"
+        "print(msg)\n");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "error\n");
+}
+
+AGO_TEST(test_file_exists) {
+    const char *tmp = "/tmp/ago_test_exists.txt";
+    FILE *f = fopen(tmp, "w");
+    fprintf(f, "x");
+    fclose(f);
+
+    char src[256];
+    snprintf(src, sizeof(src),
+        "print(file_exists(\"%s\"))\n"
+        "print(file_exists(\"/tmp/ago_no_such_file_999.txt\"))\n", tmp);
+    int r = run_and_capture(src);
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "true\nfalse\n");
+    remove(tmp);
+}
+
 /* ---- Main ---- */
 
 int main(void) {
@@ -1378,6 +1454,12 @@ int main(void) {
     AGO_RUN_TEST(&ctx, test_error_trace_nested);
     AGO_RUN_TEST(&ctx, test_error_trace_top_level);
     AGO_RUN_TEST(&ctx, test_error_trace_deep);
+
+    /* Stdlib Tier 2: File I/O */
+    AGO_RUN_TEST(&ctx, test_read_file);
+    AGO_RUN_TEST(&ctx, test_write_file);
+    AGO_RUN_TEST(&ctx, test_read_file_not_found);
+    AGO_RUN_TEST(&ctx, test_file_exists);
 
     AGO_SUMMARY(&ctx);
 }

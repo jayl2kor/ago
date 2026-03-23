@@ -335,5 +335,123 @@ bool try_builtin_call(AgoInterp *interp, const char *name, int name_len,
         *out = val_nil(); return true;
     }
 
+    /* read_file(path) -> Result<string, string> */
+    if (ago_str_eq(name, name_len, "read_file", 9)) {
+        if (argc != 1) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, line, col), "read_file() takes exactly 1 argument");
+            *out = val_nil(); return true;
+        }
+        AgoVal arg = eval_expr(interp, call_node->as.call.args[0]);
+        if (ago_error_occurred(interp->ctx)) { *out = val_nil(); return true; }
+        if (arg.kind != VAL_STRING) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, line, col), "read_file() requires a string path");
+            *out = val_nil(); return true;
+        }
+        int slen; const char *sd = str_content(arg, &slen);
+        char tmp_path[512];
+        if (slen >= (int)sizeof(tmp_path)) slen = (int)sizeof(tmp_path) - 1;
+        memcpy(tmp_path, sd, (size_t)slen); tmp_path[slen] = '\0';
+
+        FILE *f = fopen(tmp_path, "rb");
+        if (!f) {
+            /* Return err("cannot read file") */
+            const char *msg = "cannot read file";
+            AgoResultVal *rv = ago_gc_alloc(interp->gc, sizeof(AgoResultVal), NULL);
+            if (!rv) { ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, line, col), "out of memory"); *out = val_nil(); return true; }
+            rv->is_ok = false;
+            rv->value = val_string(msg, (int)strlen(msg));
+            AgoVal v; v.kind = VAL_RESULT; v.as.result = rv;
+            *out = v; return true;
+        }
+        fseek(f, 0, SEEK_END);
+        long flen = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (flen < 0 || flen > 10 * 1024 * 1024) {
+            fclose(f);
+            const char *msg = "file too large";
+            AgoResultVal *rv = ago_gc_alloc(interp->gc, sizeof(AgoResultVal), NULL);
+            if (!rv) { ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, line, col), "out of memory"); *out = val_nil(); return true; }
+            rv->is_ok = false;
+            rv->value = val_string(msg, (int)strlen(msg));
+            AgoVal v; v.kind = VAL_RESULT; v.as.result = rv;
+            *out = v; return true;
+        }
+        char *buf = ago_arena_alloc(interp->arena, (size_t)flen);
+        if (!buf) { fclose(f); ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, line, col), "out of memory"); *out = val_nil(); return true; }
+        size_t nread = fread(buf, 1, (size_t)flen, f);
+        fclose(f);
+        AgoResultVal *rv = ago_gc_alloc(interp->gc, sizeof(AgoResultVal), NULL);
+        if (!rv) { ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, line, col), "out of memory"); *out = val_nil(); return true; }
+        rv->is_ok = true;
+        rv->value = val_string(buf, (int)nread);
+        AgoVal v; v.kind = VAL_RESULT; v.as.result = rv;
+        *out = v; return true;
+    }
+
+    /* write_file(path, content) -> Result<bool, string> */
+    if (ago_str_eq(name, name_len, "write_file", 10)) {
+        if (argc != 2) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, line, col), "write_file() takes exactly 2 arguments");
+            *out = val_nil(); return true;
+        }
+        AgoVal path_val = eval_expr(interp, call_node->as.call.args[0]);
+        if (ago_error_occurred(interp->ctx)) { *out = val_nil(); return true; }
+        AgoVal content_val = eval_expr(interp, call_node->as.call.args[1]);
+        if (ago_error_occurred(interp->ctx)) { *out = val_nil(); return true; }
+        if (path_val.kind != VAL_STRING || content_val.kind != VAL_STRING) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, line, col), "write_file() requires (string, string)");
+            *out = val_nil(); return true;
+        }
+        int plen; const char *pd = str_content(path_val, &plen);
+        int clen; const char *cd = str_content(content_val, &clen);
+        char tmp_path[512];
+        if (plen >= (int)sizeof(tmp_path)) plen = (int)sizeof(tmp_path) - 1;
+        memcpy(tmp_path, pd, (size_t)plen); tmp_path[plen] = '\0';
+
+        FILE *f = fopen(tmp_path, "wb");
+        AgoResultVal *rv = ago_gc_alloc(interp->gc, sizeof(AgoResultVal), NULL);
+        if (!rv) { if (f) fclose(f); ago_error_set(interp->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, line, col), "out of memory"); *out = val_nil(); return true; }
+        if (!f) {
+            rv->is_ok = false;
+            const char *msg = "cannot write file";
+            rv->value = val_string(msg, (int)strlen(msg));
+        } else {
+            fwrite(cd, 1, (size_t)clen, f);
+            fclose(f);
+            rv->is_ok = true;
+            rv->value = val_bool(true);
+        }
+        AgoVal v; v.kind = VAL_RESULT; v.as.result = rv;
+        *out = v; return true;
+    }
+
+    /* file_exists(path) -> bool */
+    if (ago_str_eq(name, name_len, "file_exists", 11)) {
+        if (argc != 1) {
+            ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, line, col), "file_exists() takes exactly 1 argument");
+            *out = val_nil(); return true;
+        }
+        AgoVal arg = eval_expr(interp, call_node->as.call.args[0]);
+        if (ago_error_occurred(interp->ctx)) { *out = val_nil(); return true; }
+        if (arg.kind != VAL_STRING) {
+            ago_error_set(interp->ctx, AGO_ERR_TYPE,
+                          ago_loc(NULL, line, col), "file_exists() requires a string path");
+            *out = val_nil(); return true;
+        }
+        int slen; const char *sd = str_content(arg, &slen);
+        char tmp_path[512];
+        if (slen >= (int)sizeof(tmp_path)) slen = (int)sizeof(tmp_path) - 1;
+        memcpy(tmp_path, sd, (size_t)slen); tmp_path[slen] = '\0';
+        FILE *f = fopen(tmp_path, "r");
+        if (f) { fclose(f); *out = val_bool(true); }
+        else { *out = val_bool(false); }
+        return true;
+    }
+
     return false;  /* not a builtin */
 }

@@ -360,6 +360,9 @@ bool ago_sema_check(AgoSema *sema, AgoNode *program) {
     scope_define(sema->scope, "abs", 3, false, true, 1);
     scope_define(sema->scope, "min", 3, false, true, 2);
     scope_define(sema->scope, "max", 3, false, true, 2);
+    scope_define(sema->scope, "read_file", 9, false, true, 1);
+    scope_define(sema->scope, "write_file", 10, false, true, 2);
+    scope_define(sema->scope, "file_exists", 11, false, true, 1);
 
     /* Check all top-level declarations/statements */
     for (int i = 0; i < program->as.program.decl_count; i++) {

@@ -290,6 +290,11 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
         scope_pop(sema);
         break;
 
+    case AGO_NODE_BREAK_STMT:
+    case AGO_NODE_CONTINUE_STMT:
+        /* Valid only inside loops; we defer that check for now */
+        break;
+
     case AGO_NODE_BLOCK:
         scope_push(sema);
         for (int i = 0; i < node->as.block.stmt_count; i++) {

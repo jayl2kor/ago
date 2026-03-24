@@ -99,6 +99,19 @@ static AgoBuiltinId resolve_builtin(const char *name, int len) {
     return AGO_BUILTIN_NONE;
 }
 
+/* ---- Loop context for break/continue ---- */
+
+#define MAX_LOOP_DEPTH 16
+#define MAX_BREAK_PATCHES 32
+
+typedef struct {
+    int continue_target;            /* IP to jump back to for continue */
+    int break_patches[MAX_BREAK_PATCHES]; /* offsets to patch for break */
+    int break_count;
+    bool is_for;                    /* true if for-in loop (needs extra cleanup) */
+    int scope_var_count;            /* vars defined inside loop body to pop before break/continue */
+} LoopCtx;
+
 /* ---- Compiler state ---- */
 
 typedef struct {
@@ -108,6 +121,8 @@ typedef struct {
     AgoGc *gc;
     int scope_depth;        /* for tracking block-local var counts */
     int block_var_count;    /* vars defined in current block scope */
+    LoopCtx loop_stack[MAX_LOOP_DEPTH];
+    int loop_depth;
 } Compiler;
 
 static void compile_expr(Compiler *c, AgoNode *node);
@@ -322,6 +337,7 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         sub.chunk = ago_chunk_new();
         sub.scope_depth = 0;
         sub.block_var_count = 0;
+        sub.loop_depth = 0;
         if (!sub.chunk) return;
 
         /* Compile function body */
@@ -469,9 +485,31 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         int loop_start = c->chunk->code_count;
         compile_expr(c, node->as.while_stmt.condition);
         int exit_jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP_IF_FALSE);
+
+        /* Push loop context */
+        if (c->loop_depth >= MAX_LOOP_DEPTH) {
+            ago_error_set(c->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "too many nested loops (max %d)", MAX_LOOP_DEPTH);
+            break;
+        }
+        LoopCtx *lc = &c->loop_stack[c->loop_depth++];
+        lc->continue_target = loop_start;
+        lc->break_count = 0;
+        lc->is_for = false;
+        lc->scope_var_count = 0;
+
         compile_stmt(c, node->as.while_stmt.body);
+
+        c->loop_depth--;
+
         ago_chunk_emit_loop(c->chunk, loop_start);
         ago_chunk_patch_jump(c->chunk, exit_jump);
+
+        /* Patch all break jumps to here (past the loop) */
+        for (int i = 0; i < lc->break_count; i++) {
+            ago_chunk_patch_jump(c->chunk, lc->break_patches[i]);
+        }
         break;
     }
 
@@ -491,8 +529,23 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         emit(c, AGO_OP_DEFINE_VAR);
         emit_u16(c, (uint16_t)var_idx);
 
+        /* Push loop context */
+        if (c->loop_depth >= MAX_LOOP_DEPTH) {
+            ago_error_set(c->ctx, AGO_ERR_RUNTIME,
+                          ago_loc(NULL, node->line, node->column),
+                          "too many nested loops (max %d)", MAX_LOOP_DEPTH);
+            break;
+        }
+        LoopCtx *lc = &c->loop_stack[c->loop_depth++];
+        lc->continue_target = loop_start;
+        lc->break_count = 0;
+        lc->is_for = true;
+        lc->scope_var_count = 0;
+
         /* Compile body */
         compile_stmt(c, node->as.for_stmt.body);
+
+        c->loop_depth--;
 
         /* Pop loop variable */
         emit(c, AGO_OP_POP_SCOPE);
@@ -503,7 +556,61 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         /* Patch ITER_NEXT exit jump */
         ago_chunk_patch_jump(c->chunk, exit_jump_pos + 1);
 
+        /* Patch all break jumps to here (before ITER_CLEANUP) */
+        for (int i = 0; i < lc->break_count; i++) {
+            ago_chunk_patch_jump(c->chunk, lc->break_patches[i]);
+        }
+
         emit(c, AGO_OP_ITER_CLEANUP);
+        break;
+    }
+
+    case AGO_NODE_BREAK_STMT: {
+        if (c->loop_depth == 0) {
+            ago_error_set(c->ctx, AGO_ERR_SYNTAX,
+                          ago_loc(NULL, node->line, node->column),
+                          "'break' outside of loop");
+            break;
+        }
+        LoopCtx *lc = &c->loop_stack[c->loop_depth - 1];
+        /* Pop block-local variables defined inside the loop body */
+        if (c->block_var_count > 0) {
+            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, (uint8_t)c->block_var_count);
+        }
+        if (lc->is_for) {
+            /* Pop the loop variable (1) defined by the for-in */
+            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, 1);
+        }
+        /* Emit forward jump to be patched at loop end */
+        int patch = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP);
+        if (lc->break_count < MAX_BREAK_PATCHES) {
+            lc->break_patches[lc->break_count++] = patch;
+        }
+        break;
+    }
+
+    case AGO_NODE_CONTINUE_STMT: {
+        if (c->loop_depth == 0) {
+            ago_error_set(c->ctx, AGO_ERR_SYNTAX,
+                          ago_loc(NULL, node->line, node->column),
+                          "'continue' outside of loop");
+            break;
+        }
+        LoopCtx *lc = &c->loop_stack[c->loop_depth - 1];
+        /* Pop block-local variables defined inside the loop body */
+        if (c->block_var_count > 0) {
+            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, (uint8_t)c->block_var_count);
+        }
+        if (lc->is_for) {
+            /* Pop the loop variable (1) defined by the for-in */
+            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, 1);
+        }
+        /* Jump back to loop start */
+        ago_chunk_emit_loop(c->chunk, lc->continue_target);
         break;
     }
 
@@ -532,6 +639,7 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         sub.chunk = ago_chunk_new();
         sub.scope_depth = 0;
         sub.block_var_count = 0;
+        sub.loop_depth = 0;
         if (!sub.chunk) return;
 
         if (node->as.fn_decl.body) {
@@ -600,6 +708,7 @@ AgoChunk *ago_compile(AgoNode *program, AgoCtx *ctx, AgoArena *arena, AgoGc *gc)
     c.gc = gc;
     c.scope_depth = 0;
     c.block_var_count = 0;
+    c.loop_depth = 0;
 
     for (int i = 0; i < program->as.program.decl_count; i++) {
         compile_stmt(&c, program->as.program.decls[i]);

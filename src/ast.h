@@ -33,6 +33,8 @@ typedef enum {
     AGO_NODE_IF_STMT,       /* if cond { ... } else { ... } */
     AGO_NODE_WHILE_STMT,    /* while cond { ... } */
     AGO_NODE_FOR_STMT,      /* for item in collection { ... } */
+    AGO_NODE_BREAK_STMT,    /* break */
+    AGO_NODE_CONTINUE_STMT, /* continue */
     AGO_NODE_BLOCK,         /* { stmt; stmt; ... } */
 
     /* Top-level declarations */

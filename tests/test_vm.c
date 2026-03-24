@@ -522,6 +522,120 @@ AGO_TEST(test_vm_http_post) {
     AGO_ASSERT_STR_EQ(ctx, captured_output, "result\n");
 }
 
+/* ---- break/continue tests ---- */
+
+AGO_TEST(test_vm_break) {
+    int r = vm_run_and_capture(
+        "var i = 0\n"
+        "while i < 10 {\n"
+        "    if i == 3 { break }\n"
+        "    print(i)\n"
+        "    i = i + 1\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "0\n1\n2\n");
+}
+
+AGO_TEST(test_vm_continue) {
+    int r = vm_run_and_capture(
+        "var i = 0\n"
+        "while i < 5 {\n"
+        "    i = i + 1\n"
+        "    if i % 2 == 0 { continue }\n"
+        "    print(i)\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n3\n5\n");
+}
+
+AGO_TEST(test_vm_break_for) {
+    int r = vm_run_and_capture(
+        "for x in [1, 2, 3, 4, 5] {\n"
+        "    if x == 3 { break }\n"
+        "    print(x)\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n2\n");
+}
+
+AGO_TEST(test_vm_continue_for) {
+    int r = vm_run_and_capture(
+        "for x in [1, 2, 3, 4, 5] {\n"
+        "    if x % 2 == 0 { continue }\n"
+        "    print(x)\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n3\n5\n");
+}
+
+AGO_TEST(test_vm_nested_break) {
+    int r = vm_run_and_capture(
+        "for x in [1, 2, 3] {\n"
+        "    var j = 0\n"
+        "    while j < 3 {\n"
+        "        if j == 1 { break }\n"
+        "        j = j + 1\n"
+        "    }\n"
+        "    print(x)\n"
+        "}");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1\n2\n3\n");
+}
+
+/* ---- string interpolation tests ---- */
+
+AGO_TEST(test_vm_interpolation_basic) {
+    int r = vm_run_and_capture(
+        "let name = \"world\"\n"
+        "print(f\"hello {name}\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "hello world\n");
+}
+
+AGO_TEST(test_vm_interpolation_expr) {
+    int r = vm_run_and_capture(
+        "let x = 10\n"
+        "print(f\"x = {x + 1}\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "x = 11\n");
+}
+
+AGO_TEST(test_vm_interpolation_multiple) {
+    int r = vm_run_and_capture(
+        "let a = 1\nlet b = 2\n"
+        "print(f\"{a} + {b} = {a + b}\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "1 + 2 = 3\n");
+}
+
+AGO_TEST(test_vm_interpolation_no_expr) {
+    int r = vm_run_and_capture("print(f\"plain string\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "plain string\n");
+}
+
+AGO_TEST(test_vm_interpolation_nested_call) {
+    int r = vm_run_and_capture(
+        "let arr = [1, 2, 3]\n"
+        "print(f\"length is {len(arr)}\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "length is 3\n");
+}
+
+AGO_TEST(test_vm_interpolation_empty) {
+    int r = vm_run_and_capture("print(f\"\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "\n");
+}
+
+AGO_TEST(test_vm_interpolation_only_expr) {
+    int r = vm_run_and_capture(
+        "let x = 42\n"
+        "print(f\"{x}\")");
+    AGO_ASSERT_INT_EQ(ctx, r, 0);
+    AGO_ASSERT_STR_EQ(ctx, captured_output, "42\n");
+}
+
 int main(void) {
     AgoTestCtx ctx = {0, 0};
     printf("\n=== VM Tests ===\n");
@@ -590,6 +704,22 @@ int main(void) {
     AGO_RUN_TEST(&ctx, test_vm_http_get);
     AGO_RUN_TEST(&ctx, test_vm_http_get_error);
     AGO_RUN_TEST(&ctx, test_vm_http_post);
+
+    /* break/continue tests */
+    AGO_RUN_TEST(&ctx, test_vm_break);
+    AGO_RUN_TEST(&ctx, test_vm_continue);
+    AGO_RUN_TEST(&ctx, test_vm_break_for);
+    AGO_RUN_TEST(&ctx, test_vm_continue_for);
+    AGO_RUN_TEST(&ctx, test_vm_nested_break);
+
+    /* String interpolation tests */
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_basic);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_expr);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_multiple);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_no_expr);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_nested_call);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_empty);
+    AGO_RUN_TEST(&ctx, test_vm_interpolation_only_expr);
 
     AGO_SUMMARY(&ctx);
 }

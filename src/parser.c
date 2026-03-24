@@ -321,6 +321,133 @@ static AgoNode *parse_match_expression(AgoParser *p) {
     return n;
 }
 
+/* Parse interpolated string: f"text {expr} text" */
+static AgoNode *parse_interpolated_string(AgoParser *p) {
+    /* p->previous is 'f', p->current is STRING */
+    parser_advance(p); /* consume the string token */
+    AgoToken str_tok = p->previous;
+    int line = str_tok.line;
+    int col = str_tok.column;
+
+    /* String content (between quotes) */
+    const char *content = str_tok.start + 1;       /* skip opening " */
+    int content_len = str_tok.length - 2;           /* exclude both quotes */
+
+    AgoNode *result = NULL;  /* accumulated expression */
+    const char *seg_start = content;
+    const char *end = content + content_len;
+
+    while (seg_start <= end) {
+        /* Find next '{' in the remaining content */
+        const char *brace = seg_start;
+        while (brace < end && *brace != '{') {
+            if (*brace == '\\') brace++; /* skip escaped char */
+            brace++;
+        }
+
+        /* Literal segment before the brace (or rest of string if no brace) */
+        int seg_len = (int)(brace - seg_start);
+        if (seg_len > 0 || brace == end) {
+            if (seg_len > 0 || !result) {
+                /* Build a quoted string literal in the arena for this segment */
+                int quoted_len = seg_len + 2; /* + quotes */
+                char *buf = ago_arena_alloc(p->arena, (size_t)quoted_len);
+                if (!buf) return NULL;
+                buf[0] = '"';
+                memcpy(buf + 1, seg_start, (size_t)seg_len);
+                buf[quoted_len - 1] = '"';
+
+                AgoNode *lit = ago_ast_new(p->arena, AGO_NODE_STRING_LIT, line, col);
+                if (!lit) return NULL;
+                lit->as.string_lit.value = buf;
+                lit->as.string_lit.length = quoted_len;
+
+                if (!result) {
+                    result = lit;
+                } else {
+                    AgoNode *add = ago_ast_new(p->arena, AGO_NODE_BINARY, line, col);
+                    if (!add) return NULL;
+                    add->as.binary.op = AGO_TOKEN_PLUS;
+                    add->as.binary.left = result;
+                    add->as.binary.right = lit;
+                    result = add;
+                }
+            }
+        }
+
+        if (brace >= end) break; /* no more interpolations */
+
+        /* Find matching '}' — handle nested braces */
+        const char *expr_start = brace + 1;
+        int depth = 1;
+        const char *expr_end = expr_start;
+        while (expr_end < end && depth > 0) {
+            if (*expr_end == '{') depth++;
+            else if (*expr_end == '}') depth--;
+            if (depth > 0) expr_end++;
+        }
+
+        if (depth != 0) {
+            ago_error_set(p->ctx, AGO_ERR_SYNTAX,
+                          ago_loc(p->lexer.file, line, col),
+                          "unterminated interpolation expression in f-string");
+            return NULL;
+        }
+
+        /* Parse the expression between { and } using a sub-parser */
+        int expr_len = (int)(expr_end - expr_start);
+        AgoParser sub;
+        ago_parser_init(&sub, expr_start, p->lexer.file, p->arena, p->ctx);
+        /* Override the sub-lexer to stop at the end of the expression.
+         * We do this by creating a null-terminated copy of the expression. */
+        char *expr_buf = ago_arena_alloc(p->arena, (size_t)(expr_len + 1));
+        if (!expr_buf) return NULL;
+        memcpy(expr_buf, expr_start, (size_t)expr_len);
+        expr_buf[expr_len] = '\0';
+
+        ago_parser_init(&sub, expr_buf, p->lexer.file, p->arena, p->ctx);
+        AgoNode *expr = parse_expression(&sub, PREC_NONE);
+        if (ago_error_occurred(p->ctx)) return NULL;
+
+        /* Wrap expression in str() call */
+        AgoNode *str_ident = ago_ast_new(p->arena, AGO_NODE_IDENT, line, col);
+        if (!str_ident) return NULL;
+        str_ident->as.ident.name = "str";
+        str_ident->as.ident.length = 3;
+
+        AgoNode *str_call = ago_ast_new(p->arena, AGO_NODE_CALL, line, col);
+        if (!str_call) return NULL;
+        str_call->as.call.callee = str_ident;
+        str_call->as.call.arg_count = 1;
+        str_call->as.call.args = ago_arena_alloc(p->arena, sizeof(AgoNode *));
+        str_call->as.call.args[0] = expr;
+
+        if (!result) {
+            result = str_call;
+        } else {
+            AgoNode *add = ago_ast_new(p->arena, AGO_NODE_BINARY, line, col);
+            if (!add) return NULL;
+            add->as.binary.op = AGO_TOKEN_PLUS;
+            add->as.binary.left = result;
+            add->as.binary.right = str_call;
+            result = add;
+        }
+
+        seg_start = expr_end + 1; /* skip past '}' */
+    }
+
+    if (!result) {
+        /* Empty f"" — return empty string */
+        AgoNode *lit = ago_ast_new(p->arena, AGO_NODE_STRING_LIT, line, col);
+        if (!lit) return NULL;
+        lit->as.string_lit.value = "\"\"";
+        lit->as.string_lit.length = 2;
+        return lit;
+    }
+
+    return result;
+}
+
 /* Parse prefix expression */
 static AgoNode *parse_prefix(AgoParser *p) {
     if (ago_error_occurred(p->ctx)) return NULL;
@@ -335,6 +462,11 @@ static AgoNode *parse_prefix(AgoParser *p) {
     case AGO_TOKEN_TRUE:    return parse_bool_literal(p, true);
     case AGO_TOKEN_FALSE:   return parse_bool_literal(p, false);
     case AGO_TOKEN_IDENT: {
+        /* Check for f-string interpolation: f"..." */
+        if (tok.length == 1 && tok.start[0] == 'f' &&
+            parser_check(p, AGO_TOKEN_STRING)) {
+            return parse_interpolated_string(p);
+        }
         /* Check for struct literal: Name { field: val, ... }
          * Only if current is { AND the token after { is IDENT followed by : */
         AgoNode *id = parse_identifier(p);
@@ -749,6 +881,16 @@ static AgoNode *parse_statement(AgoParser *p) {
     }
     if (parser_match(p, AGO_TOKEN_FOR)) {
         return parse_for_statement(p);
+    }
+    if (parser_match(p, AGO_TOKEN_BREAK)) {
+        AgoNode *n = node_new(p, AGO_NODE_BREAK_STMT);
+        parser_match(p, AGO_TOKEN_NEWLINE);
+        return n;
+    }
+    if (parser_match(p, AGO_TOKEN_CONTINUE)) {
+        AgoNode *n = node_new(p, AGO_NODE_CONTINUE_STMT);
+        parser_match(p, AGO_TOKEN_NEWLINE);
+        return n;
     }
     if (parser_match(p, AGO_TOKEN_IMPORT)) {
         parser_expect(p, AGO_TOKEN_STRING, "expected module path after 'import'");

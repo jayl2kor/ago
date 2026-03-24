@@ -66,6 +66,7 @@ typedef enum {
     AGL_OP_RESULT_OK,      /* pop value, push ok(value) */
     AGL_OP_RESULT_ERR,     /* pop value, push err(value) */
     AGL_OP_MATCH,          /* 2B ok_name, 2B err_name, 2B ok_offset, 2B err_offset */
+    AGL_OP_TRY,            /* pop result: if ok push value, if err push err and return */
 
     /* For-in loop */
     AGL_OP_ITER_SETUP,     /* pop array -> push (array, len, 0) */

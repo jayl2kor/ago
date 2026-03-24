@@ -23,6 +23,7 @@ typedef enum {
     AGL_NODE_RESULT_OK,     /* ok(expr) */
     AGL_NODE_RESULT_ERR,    /* err(expr) */
     AGL_NODE_MATCH_EXPR,    /* match expr { ok(n) -> expr, err(n) -> expr } */
+    AGL_NODE_TRY_EXPR,     /* expr? — unwrap ok or propagate err */
 
     /* Statements */
     AGL_NODE_EXPR_STMT,     /* expression as statement */
@@ -124,6 +125,9 @@ struct AglNode {
             int err_name_length;
             AglNode *err_body;
         } match_expr;
+
+        /* AGL_NODE_TRY_EXPR */
+        struct { AglNode *expr; } try_expr;
 
         /* AGL_NODE_ASSIGN_STMT */
         struct {

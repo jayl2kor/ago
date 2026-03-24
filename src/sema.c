@@ -194,6 +194,10 @@ static void check_expr(AglSema *sema, AglNode *node) {
         check_expr(sema, node->as.result_val.value);
         break;
 
+    case AGL_NODE_TRY_EXPR:
+        check_expr(sema, node->as.try_expr.expr);
+        break;
+
     case AGL_NODE_MATCH_EXPR:
         check_expr(sema, node->as.match_expr.subject);
         /* ok arm: bind name in a temporary scope */

@@ -52,6 +52,7 @@ typedef enum {
     AGL_TOKEN_NOT,          /* ! */
     AGL_TOKEN_ARROW,        /* -> */
     AGL_TOKEN_DOT,          /* . */
+    AGL_TOKEN_QUESTION,     /* ? */
 
     /* Delimiters */
     AGL_TOKEN_LPAREN,       /* ( */

@@ -292,6 +292,11 @@ static void compile_expr(Compiler *c, AglNode *node) {
         emit(c, AGL_OP_RESULT_ERR);
         break;
 
+    case AGL_NODE_TRY_EXPR:
+        compile_expr(c, node->as.try_expr.expr);
+        emit(c, AGL_OP_TRY);
+        break;
+
     case AGL_NODE_MATCH_EXPR: {
         compile_expr(c, node->as.match_expr.subject);
         /* OP_MATCH ok_name_idx err_name_idx ok_offset err_offset */

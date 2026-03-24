@@ -708,6 +708,24 @@ static int vm_execute(Vm *vm, AglChunk *chunk) {
             break;
         }
 
+        case AGL_OP_TRY: {
+            AglVal val = vm_pop(vm);
+            if (val.kind != VAL_RESULT) {
+                agl_error_set(vm->ctx, AGL_ERR_TYPE,
+                              agl_loc(NULL, vm->current_line, 0),
+                              "'?' operator requires a result value");
+                return -1;
+            }
+            if (val.as.result->is_ok) {
+                vm_push(vm, val.as.result->value);
+            } else {
+                /* Propagate err: push the err result and return from function */
+                vm_push(vm, val);
+                return 0;
+            }
+            break;
+        }
+
         case AGL_OP_ITER_SETUP: {
             AglVal arr = vm_pop(vm);
             if (arr.kind != VAL_ARRAY) {

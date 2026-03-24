@@ -75,6 +75,7 @@ static bool should_insert_newline(AglTokenKind kind) {
     case AGL_TOKEN_RPAREN:
     case AGL_TOKEN_RBRACKET:
     case AGL_TOKEN_RBRACE:
+    case AGL_TOKEN_QUESTION:
         return true;
     default:
         return false;
@@ -272,6 +273,7 @@ AglToken agl_lexer_next_token(AglLexer *lexer) {
     case ',': kind = AGL_TOKEN_COMMA;   break;
     case ':': kind = AGL_TOKEN_COLON;   break;
     case '.': kind = AGL_TOKEN_DOT;     break;
+    case '?': kind = AGL_TOKEN_QUESTION; break;
     case '+': kind = AGL_TOKEN_PLUS;    break;
     case '*': kind = AGL_TOKEN_STAR;    break;
     case '/': kind = AGL_TOKEN_SLASH;   break;
@@ -361,6 +363,7 @@ const char *agl_token_kind_name(AglTokenKind kind) {
     case AGL_TOKEN_NOT:       return "!";
     case AGL_TOKEN_ARROW:     return "->";
     case AGL_TOKEN_DOT:       return ".";
+    case AGL_TOKEN_QUESTION:  return "?";
     case AGL_TOKEN_LPAREN:    return "(";
     case AGL_TOKEN_RPAREN:    return ")";
     case AGL_TOKEN_LBRACE:    return "{";

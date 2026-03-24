@@ -662,6 +662,91 @@ AGL_TEST(test_vm_interpolation_only_expr) {
     AGL_ASSERT_STR_EQ(ctx, captured_output, "42\n");
 }
 
+/* ---- Try operator (?) tests ---- */
+
+AGL_TEST(test_vm_try_ok) {
+    int r = vm_run_and_capture(
+        "fn get_value() -> result {\n"
+        "    return ok(42)\n"
+        "}\n"
+        "fn process() -> result {\n"
+        "    let v = get_value()?\n"
+        "    return ok(v + 1)\n"
+        "}\n"
+        "let r = match process() {\n"
+        "    ok(v) -> v\n"
+        "    err(e) -> 0\n"
+        "}\n"
+        "print(r)");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "43\n");
+}
+
+AGL_TEST(test_vm_try_err_propagation) {
+    int r = vm_run_and_capture(
+        "fn might_fail() -> result {\n"
+        "    return err(\"something broke\")\n"
+        "}\n"
+        "fn caller() -> result {\n"
+        "    let val = might_fail()?\n"
+        "    return ok(val)\n"
+        "}\n"
+        "let msg = match caller() {\n"
+        "    ok(v) -> \"ok\"\n"
+        "    err(e) -> e\n"
+        "}\n"
+        "print(msg)");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "something broke\n");
+}
+
+AGL_TEST(test_vm_try_chain) {
+    int r = vm_run_and_capture(
+        "fn step1() -> result { return ok(1) }\n"
+        "fn step2() -> result { return ok(2) }\n"
+        "fn pipeline() -> result {\n"
+        "    let a = step1()?\n"
+        "    let b = step2()?\n"
+        "    return ok(a + b)\n"
+        "}\n"
+        "let r = match pipeline() {\n"
+        "    ok(v) -> v\n"
+        "    err(e) -> 0\n"
+        "}\n"
+        "print(r)");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "3\n");
+}
+
+AGL_TEST(test_vm_try_chain_early_err) {
+    int r = vm_run_and_capture(
+        "fn step1() -> result { return err(\"fail\") }\n"
+        "fn step2() -> result { return ok(2) }\n"
+        "fn pipeline() -> result {\n"
+        "    let a = step1()?\n"
+        "    let b = step2()?\n"
+        "    return ok(a + b)\n"
+        "}\n"
+        "let r = match pipeline() {\n"
+        "    ok(v) -> \"ok\"\n"
+        "    err(e) -> e\n"
+        "}\n"
+        "print(r)");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "fail\n");
+}
+
+AGL_TEST(test_vm_try_type_error) {
+    /* ? on non-result should error */
+    int r = vm_run_and_capture(
+        "fn bad() -> result {\n"
+        "    let x = 42?\n"
+        "    return ok(x)\n"
+        "}\n"
+        "bad()");
+    AGL_ASSERT_INT_EQ(ctx, r, -1);
+}
+
 int main(void) {
     AglTestCtx ctx = {0, 0};
     printf("\n=== VM Tests ===\n");
@@ -750,6 +835,13 @@ int main(void) {
     AGL_RUN_TEST(&ctx, test_vm_interpolation_nested_call);
     AGL_RUN_TEST(&ctx, test_vm_interpolation_empty);
     AGL_RUN_TEST(&ctx, test_vm_interpolation_only_expr);
+
+    /* Try operator (?) tests */
+    AGL_RUN_TEST(&ctx, test_vm_try_ok);
+    AGL_RUN_TEST(&ctx, test_vm_try_err_propagation);
+    AGL_RUN_TEST(&ctx, test_vm_try_chain);
+    AGL_RUN_TEST(&ctx, test_vm_try_chain_early_err);
+    AGL_RUN_TEST(&ctx, test_vm_try_type_error);
 
     AGL_SUMMARY(&ctx);
 }

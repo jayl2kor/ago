@@ -439,6 +439,27 @@ AglVal eval_expr(AglInterp *interp, AglNode *node) {
         return fn_val;
     }
 
+    case AGL_NODE_TRY_EXPR: {
+        AglVal val = eval_expr(interp, node->as.try_expr.expr);
+        if (agl_error_occurred(interp->ctx)) return val_nil();
+        if (val.kind != VAL_RESULT) {
+            agl_error_set(interp->ctx, AGL_ERR_TYPE,
+                          agl_loc(NULL, node->line, node->column),
+                          "'?' operator requires a result value");
+            return val_nil();
+        }
+        if (val.as.result->is_ok) {
+            return val.as.result->value;
+        }
+        /* Propagate err via return mechanism */
+        interp->return_value = val;
+        interp->has_return = true;
+        if (interp->return_jmp_set) {
+            longjmp(interp->return_jmp, 1);
+        }
+        return val_nil();
+    }
+
     case AGL_NODE_CALL: {
         /* Try built-in functions first */
         if (node->as.call.callee->kind == AGL_NODE_IDENT) {

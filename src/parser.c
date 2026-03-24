@@ -71,7 +71,8 @@ static Precedence get_precedence(AglTokenKind kind) {
     case AGL_TOKEN_PERCENT: return PREC_FACTOR;
     case AGL_TOKEN_LPAREN:
     case AGL_TOKEN_DOT:
-    case AGL_TOKEN_LBRACKET: return PREC_CALL;
+    case AGL_TOKEN_LBRACKET:
+    case AGL_TOKEN_QUESTION: return PREC_CALL;
     default:                return PREC_NONE;
     }
 }
@@ -643,6 +644,14 @@ static AglNode *parse_call(AglParser *p, AglNode *callee) {
 /* Parse infix/postfix expression */
 static AglNode *parse_infix(AglParser *p, AglNode *left) {
     AglTokenKind op = p->previous.kind;
+
+    /* Try operator: expr? */
+    if (op == AGL_TOKEN_QUESTION) {
+        AglNode *n = node_new(p, AGL_NODE_TRY_EXPR);
+        if (!n) return NULL;
+        n->as.try_expr.expr = left;
+        return n;
+    }
 
     /* Function call */
     if (op == AGL_TOKEN_LPAREN) {

@@ -1,13 +1,8 @@
 #include "test_harness.h"
 #include "../src/interpreter.h"
-#include "../src/compiler.h"
-#include "../src/vm.h"
-#include "../src/parser.h"
-#include "../src/sema.h"
-#include "../src/runtime.h"
 #include <unistd.h>
 
-/* ---- Helper: compile+run via VM and capture stdout ---- */
+/* ---- Helper: run via VM (ago_run now uses VM) and capture stdout ---- */
 
 #define MAX_OUTPUT 4096
 static char captured_output[MAX_OUTPUT];
@@ -22,21 +17,7 @@ static int vm_run_and_capture(const char *source) {
     close(pipefd[1]);
 
     AgoCtx *ctx = ago_ctx_new();
-    AgoArena *arena = ago_arena_new();
-    AgoGc *gc = ago_gc_new();
-
-    AgoParser parser;
-    ago_parser_init(&parser, source, "test.ago", arena, ctx);
-    AgoNode *program = ago_parser_parse(&parser);
-
-    int result = -1;
-    if (program && !ago_error_occurred(ctx)) {
-        AgoChunk *chunk = ago_compile(program, ctx, arena, gc);
-        if (chunk && !ago_error_occurred(ctx)) {
-            result = ago_vm_run(chunk, "test.ago", ctx);
-            ago_chunk_free(chunk);
-        }
-    }
+    int result = ago_run(source, "test.ago", ctx);
 
     fflush(stdout);
     dup2(saved_stdout, STDOUT_FILENO);
@@ -52,8 +33,6 @@ static int vm_run_and_capture(const char *source) {
         result = -1;
     }
 
-    ago_gc_free(gc);
-    ago_arena_free(arena);
     ago_ctx_free(ctx);
     return result;
 }

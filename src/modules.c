@@ -5,7 +5,7 @@
 /* ---- Path helpers ---- */
 
 /* Extract directory from a file path. Returns "" for bare filenames. */
-static void path_dir(const char *filepath, char *buf, size_t bufsize) {
+void path_dir(const char *filepath, char *buf, size_t bufsize) {
     const char *last_sep = NULL;
     for (const char *p = filepath; *p; p++) {
         if (*p == '/') last_sep = p;
@@ -22,7 +22,7 @@ static void path_dir(const char *filepath, char *buf, size_t bufsize) {
 
 /* Resolve import path relative to current file. Appends .ago extension.
  * Returns false if path escapes the base directory (path traversal). */
-static bool resolve_import_path(const char *base_file, const char *import_path,
+bool resolve_import_path(const char *base_file, const char *import_path,
                                 int import_len, char *buf, size_t bufsize) {
     /* Reject paths containing ".." to prevent directory traversal */
     for (int i = 0; i < import_len - 1; i++) {
@@ -50,7 +50,7 @@ static bool resolve_import_path(const char *base_file, const char *import_path,
 }
 
 /* Read entire file into malloc'd buffer. Returns NULL on failure. */
-static char *read_file(const char *path) {
+char *ago_read_file(const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
@@ -113,7 +113,7 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
     if (module_loaded(interp, resolved)) return;
 
     /* Read module file */
-    char *mod_source = read_file(resolved);
+    char *mod_source = ago_read_file(resolved);
     if (!mod_source) {
         ago_error_set(interp->ctx, AGO_ERR_IO,
                       ago_loc(NULL, node->line, node->column),

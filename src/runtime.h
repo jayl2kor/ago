@@ -189,6 +189,10 @@ bool try_builtin_call(AgoInterp *interp, const char *name, int name_len,
 
 /* ---- modules.c ---- */
 
+void path_dir(const char *filepath, char *buf, size_t bufsize);
+bool resolve_import_path(const char *base_file, const char *import_path,
+                         int import_len, char *buf, size_t bufsize);
+char *ago_read_file(const char *path);
 void module_cache_free(AgoInterp *interp);
 void exec_import(AgoInterp *interp, AgoNode *node);
 

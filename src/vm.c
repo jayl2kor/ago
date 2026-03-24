@@ -891,12 +891,71 @@ static int vm_execute(Vm *vm, AgoChunk *chunk) {
 
         case AGO_OP_IMPORT: {
             uint16_t idx = read_u16(ip); ip += 2;
-            (void)idx;
-            /* Delegate to existing module system: parse, compile, execute */
-            /* For now, use the tree-walk import path */
-            ago_error_set(vm->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, vm->current_line, 0),
-                          "import not yet supported in VM mode");
-            return -1;
+            AgoVal path_val = chunk->constants[idx];
+            const char *import_path = path_val.as.string.data;
+            int import_len = path_val.as.string.length;
+
+            /* Resolve path */
+            char resolved[512];
+            if (!resolve_import_path(vm->file, import_path, import_len,
+                                     resolved, sizeof(resolved))) {
+                ago_error_set(vm->ctx, AGO_ERR_IO, ago_loc(NULL, vm->current_line, 0),
+                              "invalid import path '%.*s'", import_len, import_path);
+                return -1;
+            }
+
+            /* Check module cache */
+            bool already_loaded = false;
+            for (int i = 0; i < vm->module_count; i++) {
+                if (strcmp(vm->modules[i].path, resolved) == 0) {
+                    already_loaded = true;
+                    break;
+                }
+            }
+            if (already_loaded) break;
+
+            /* Read module file */
+            char *mod_source = ago_read_file(resolved);
+            if (!mod_source) {
+                ago_error_set(vm->ctx, AGO_ERR_IO, ago_loc(NULL, vm->current_line, 0),
+                              "cannot open module '%.*s'", import_len, import_path);
+                return -1;
+            }
+
+            /* Parse */
+            AgoArena *mod_arena = ago_arena_new();
+            if (!mod_arena) { free(mod_source); return -1; }
+            AgoParser mod_parser;
+            ago_parser_init(&mod_parser, mod_source, resolved, mod_arena, vm->ctx);
+            AgoNode *mod_prog = ago_parser_parse(&mod_parser);
+            if (!mod_prog || ago_error_occurred(vm->ctx)) {
+                ago_arena_free(mod_arena); free(mod_source); return -1;
+            }
+
+            /* Register module before execution (prevents circular imports) */
+            if (vm->module_count < MAX_MODULES) {
+                AgoModule *m = &vm->modules[vm->module_count++];
+                m->path = strdup(resolved);
+                m->source = mod_source;
+                m->arena = mod_arena;
+            } else {
+                ago_arena_free(mod_arena); free(mod_source);
+                ago_error_set(vm->ctx, AGO_ERR_RUNTIME, ago_loc(NULL, vm->current_line, 0),
+                              "too many modules (max %d)", MAX_MODULES);
+                return -1;
+            }
+
+            /* Compile + execute module */
+            AgoChunk *mod_chunk = ago_compile(mod_prog, vm->ctx, mod_arena, vm->gc);
+            if (!mod_chunk || ago_error_occurred(vm->ctx)) return -1;
+
+            const char *saved_file = vm->file;
+            vm->file = resolved;
+            int rc = vm_execute(vm, mod_chunk);
+            vm->file = saved_file;
+            ago_chunk_free(mod_chunk);
+            if (rc != 0) return -1;
+            break;
         }
 
         case AGO_OP_LINE: {
@@ -947,6 +1006,154 @@ int ago_vm_run(AgoChunk *chunk, const char *filename, AgoCtx *ctx) {
     ctx->trace_cb = NULL;
     ctx->trace_data = NULL;
     ago_gc_free(gc);
+    /* Free module cache */
+    for (int i = 0; i < vm.module_count; i++) {
+        free(vm.modules[i].path);
+        free(vm.modules[i].source);
+        ago_arena_free(vm.modules[i].arena);
+    }
+
+    ago_gc_free(gc);
     ago_arena_free(arena);
+    return result;
+}
+
+/* ---- Compile + execute AST via VM ---- */
+
+int ago_vm_interpret(AgoNode *program, const char *filename, AgoCtx *ctx) {
+    if (!program || program->kind != AGO_NODE_PROGRAM) return -1;
+
+    AgoArena *arena = ago_arena_new();
+    if (!arena) return -1;
+
+    AgoGc *gc = ago_gc_new();
+    if (!gc) { ago_arena_free(arena); return -1; }
+
+    AgoChunk *chunk = ago_compile(program, ctx, arena, gc);
+    if (!chunk || ago_error_occurred(ctx)) {
+        ago_gc_free(gc);
+        ago_arena_free(arena);
+        return -1;
+    }
+
+    Vm vm;
+    memset(&vm, 0, sizeof(vm));
+    env_init(&vm.env);
+    vm.ctx = ctx;
+    vm.arena = arena;
+    vm.gc = gc;
+    vm.file = filename ? filename : "<stdin>";
+    vm.current_line = 1;
+
+    ctx->trace_cb = vm_capture_trace;
+    ctx->trace_data = &vm;
+
+    int result = vm_execute(&vm, chunk);
+
+    ctx->trace_cb = NULL;
+    ctx->trace_data = NULL;
+    ago_chunk_free(chunk);
+    for (int i = 0; i < vm.module_count; i++) {
+        free(vm.modules[i].path);
+        free(vm.modules[i].source);
+        ago_arena_free(vm.modules[i].arena);
+    }
+    ago_gc_free(gc);
+    ago_arena_free(arena);
+    return result;
+}
+
+/* ---- VM-based REPL ---- */
+
+struct AgoVmRepl {
+    Vm vm;
+    AgoCtx *ctx;
+};
+
+AgoVmRepl *ago_vm_repl_new(void) {
+    AgoVmRepl *repl = calloc(1, sizeof(AgoVmRepl));
+    if (!repl) return NULL;
+
+    repl->ctx = ago_ctx_new();
+    if (!repl->ctx) { free(repl); return NULL; }
+
+    AgoArena *arena = ago_arena_new();
+    if (!arena) { ago_ctx_free(repl->ctx); free(repl); return NULL; }
+
+    AgoGc *gc = ago_gc_new();
+    if (!gc) { ago_arena_free(arena); ago_ctx_free(repl->ctx); free(repl); return NULL; }
+
+    env_init(&repl->vm.env);
+    repl->vm.ctx = repl->ctx;
+    repl->vm.arena = arena;
+    repl->vm.gc = gc;
+    repl->vm.file = "<repl>";
+    repl->vm.current_line = 1;
+
+    repl->ctx->trace_cb = vm_capture_trace;
+    repl->ctx->trace_data = &repl->vm;
+
+    return repl;
+}
+
+void ago_vm_repl_free(AgoVmRepl *repl) {
+    if (!repl) return;
+    for (int i = 0; i < repl->vm.module_count; i++) {
+        free(repl->vm.modules[i].path);
+        free(repl->vm.modules[i].source);
+        ago_arena_free(repl->vm.modules[i].arena);
+    }
+    ago_gc_free(repl->vm.gc);
+    ago_arena_free(repl->vm.arena);
+    repl->ctx->trace_cb = NULL;
+    ago_ctx_free(repl->ctx);
+    free(repl);
+}
+
+int ago_vm_repl_exec(AgoVmRepl *repl, const char *source) {
+    if (!repl || !source) return -1;
+
+    ago_error_clear(repl->ctx);
+
+    /* Copy source into arena for AST pointer safety */
+    AgoArena *parse_arena = ago_arena_new();
+    if (!parse_arena) return -1;
+
+    size_t src_len = strlen(source);
+    char *src_copy = ago_arena_alloc(parse_arena, src_len + 1);
+    if (!src_copy) { ago_arena_free(parse_arena); return -1; }
+    memcpy(src_copy, source, src_len + 1);
+
+    AgoParser parser;
+    ago_parser_init(&parser, src_copy, "<repl>", parse_arena, repl->ctx);
+    AgoNode *program = ago_parser_parse(&parser);
+
+    if (!program || ago_error_occurred(repl->ctx)) {
+        if (ago_error_occurred(repl->ctx)) {
+            ago_error_print(ago_error_get(repl->ctx));
+        }
+        ago_arena_free(parse_arena);
+        return -1;
+    }
+
+    AgoChunk *chunk = ago_compile(program, repl->ctx, parse_arena, repl->vm.gc);
+    if (!chunk || ago_error_occurred(repl->ctx)) {
+        if (ago_error_occurred(repl->ctx)) {
+            ago_error_print(ago_error_get(repl->ctx));
+        }
+        ago_arena_free(parse_arena);
+        return -1;
+    }
+
+    int result = vm_execute(&repl->vm, chunk);
+    if (ago_error_occurred(repl->ctx)) {
+        ago_error_print(ago_error_get(repl->ctx));
+        ago_chunk_free(chunk);
+        /* Keep parse arena alive for fn decls that reference AST */
+        return -1;
+    }
+
+    ago_chunk_free(chunk);
+    /* Keep parse arena alive — fn decl AST nodes may be referenced */
     return result;
 }

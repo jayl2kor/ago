@@ -2,6 +2,7 @@
 #include "runtime.h"
 #include "parser.h"
 #include "sema.h"
+#include "vm.h"
 
 /* ---- Call user function from AST call node (evaluates args) ---- */
 
@@ -607,49 +608,8 @@ void exec_stmt(AgoInterp *interp, AgoNode *node) {
 /* ---- Public API ---- */
 
 int ago_interpret(AgoNode *program, const char *filename, AgoCtx *ctx) {
-    if (!program || program->kind != AGO_NODE_PROGRAM) return -1;
-
-    AgoArena *runtime_arena = ago_arena_new();
-    if (!runtime_arena) return -1;
-
-    AgoGc *gc = ago_gc_new();
-    if (!gc) { ago_arena_free(runtime_arena); return -1; }
-
-    AgoInterp interp;
-    env_init(&interp.env);
-    interp.ctx = ctx;
-    interp.arena = runtime_arena;
-    interp.gc = gc;
-    interp.file = filename ? filename : "<stdin>";
-    interp.module_count = 0;
-    interp.has_return = false;
-    interp.return_value = val_nil();
-    interp.return_jmp_set = false;
-    interp.call_depth = 0;
-
-    /* Set up trace capture so errors include call stacks */
-    ctx->trace_cb = capture_trace;
-    ctx->trace_data = &interp;
-    /* Note: interp is local to this function, valid for its lifetime */
-
-    for (int i = 0; i < program->as.program.decl_count; i++) {
-        exec_stmt(&interp, program->as.program.decls[i]);
-        if (ago_error_occurred(ctx)) {
-            ctx->trace_cb = NULL;
-            ctx->trace_data = NULL;
-            module_cache_free(&interp);
-            ago_gc_free(gc);
-            ago_arena_free(runtime_arena);
-            return -1;
-        }
-    }
-
-    ctx->trace_cb = NULL;
-    ctx->trace_data = NULL;
-    module_cache_free(&interp);
-    ago_gc_free(gc);
-    ago_arena_free(runtime_arena);
-    return 0;
+    /* Delegate to bytecode VM */
+    return ago_vm_interpret(program, filename, ctx);
 }
 
 int ago_run(const char *source, const char *filename, AgoCtx *ctx) {
@@ -687,87 +647,27 @@ int ago_run(const char *source, const char *filename, AgoCtx *ctx) {
     return result;
 }
 
-/* ---- REPL ---- */
+/* ---- REPL (delegates to VM) ---- */
 
 struct AgoRepl {
-    AgoInterp interp;
-    AgoCtx *ctx;
+    AgoVmRepl *vm_repl;
 };
 
 AgoRepl *ago_repl_new(void) {
     AgoRepl *repl = calloc(1, sizeof(AgoRepl));
     if (!repl) return NULL;
-
-    repl->ctx = ago_ctx_new();
-    if (!repl->ctx) { free(repl); return NULL; }
-
-    AgoArena *arena = ago_arena_new();
-    if (!arena) { ago_ctx_free(repl->ctx); free(repl); return NULL; }
-
-    AgoGc *gc = ago_gc_new();
-    if (!gc) { ago_arena_free(arena); ago_ctx_free(repl->ctx); free(repl); return NULL; }
-
-    env_init(&repl->interp.env);
-    repl->interp.ctx = repl->ctx;
-    repl->interp.arena = arena;
-    repl->interp.gc = gc;
-    repl->interp.file = "<repl>";
-    repl->interp.module_count = 0;
-    repl->interp.has_return = false;
-    repl->interp.return_value = val_nil();
-    repl->interp.return_jmp_set = false;
-    repl->interp.call_depth = 0;
-    repl->ctx->trace_cb = capture_trace;
-    repl->ctx->trace_data = &repl->interp;
+    repl->vm_repl = ago_vm_repl_new();
+    if (!repl->vm_repl) { free(repl); return NULL; }
     return repl;
 }
 
 void ago_repl_free(AgoRepl *repl) {
     if (!repl) return;
-    module_cache_free(&repl->interp);
-    ago_gc_free(repl->interp.gc);
-    ago_arena_free(repl->interp.arena);
-    ago_ctx_free(repl->ctx);
+    ago_vm_repl_free(repl->vm_repl);
     free(repl);
 }
 
 int ago_repl_exec(AgoRepl *repl, const char *source) {
     if (!repl || !source) return -1;
-
-    /* Reset error state from previous execution */
-    ago_error_clear(repl->ctx);
-
-    /* Copy source into arena so AST pointers remain valid */
-    AgoArena *parse_arena = ago_arena_new();
-    if (!parse_arena) return -1;
-
-    size_t src_len = strlen(source);
-    char *src_copy = ago_arena_alloc(parse_arena, src_len + 1);
-    if (!src_copy) { ago_arena_free(parse_arena); return -1; }
-    memcpy(src_copy, source, src_len + 1);
-
-    AgoParser parser;
-    ago_parser_init(&parser, src_copy, "<repl>", parse_arena, repl->ctx);
-    AgoNode *program = ago_parser_parse(&parser);
-
-    if (!program || ago_error_occurred(repl->ctx)) {
-        if (ago_error_occurred(repl->ctx)) {
-            ago_error_print(ago_error_get(repl->ctx));
-        }
-        ago_arena_free(parse_arena);
-        return -1;
-    }
-
-    /* Execute each statement in the persistent interpreter */
-    for (int i = 0; i < program->as.program.decl_count; i++) {
-        exec_stmt(&repl->interp, program->as.program.decls[i]);
-        if (ago_error_occurred(repl->ctx)) {
-            ago_error_print(ago_error_get(repl->ctx));
-            /* Don't free parse_arena — fn decls reference AST nodes */
-            return -1;
-        }
-    }
-
-    /* Keep parse arena alive — AST nodes may be referenced by fn values */
-    return 0;
+    return ago_vm_repl_exec(repl->vm_repl, source);
 }

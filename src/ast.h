@@ -7,168 +7,168 @@
 
 typedef enum {
     /* Expressions */
-    AGO_NODE_INT_LIT,       /* 42 */
-    AGO_NODE_FLOAT_LIT,     /* 3.14 */
-    AGO_NODE_STRING_LIT,    /* "hello" */
-    AGO_NODE_BOOL_LIT,      /* true, false */
-    AGO_NODE_IDENT,         /* x, foo */
-    AGO_NODE_UNARY,         /* !x, -x */
-    AGO_NODE_BINARY,        /* a + b */
-    AGO_NODE_CALL,          /* foo(a, b) */
-    AGO_NODE_INDEX,         /* arr[0] */
-    AGO_NODE_ARRAY_LIT,     /* [1, 2, 3] */
-    AGO_NODE_MAP_LIT,       /* {"key": value, ...} */
-    AGO_NODE_STRUCT_LIT,    /* Point { x: 1, y: 2 } */
-    AGO_NODE_LAMBDA,        /* fn(x: int) -> int { ... } (anonymous function) */
-    AGO_NODE_RESULT_OK,     /* ok(expr) */
-    AGO_NODE_RESULT_ERR,    /* err(expr) */
-    AGO_NODE_MATCH_EXPR,    /* match expr { ok(n) -> expr, err(n) -> expr } */
+    AGL_NODE_INT_LIT,       /* 42 */
+    AGL_NODE_FLOAT_LIT,     /* 3.14 */
+    AGL_NODE_STRING_LIT,    /* "hello" */
+    AGL_NODE_BOOL_LIT,      /* true, false */
+    AGL_NODE_IDENT,         /* x, foo */
+    AGL_NODE_UNARY,         /* !x, -x */
+    AGL_NODE_BINARY,        /* a + b */
+    AGL_NODE_CALL,          /* foo(a, b) */
+    AGL_NODE_INDEX,         /* arr[0] */
+    AGL_NODE_ARRAY_LIT,     /* [1, 2, 3] */
+    AGL_NODE_MAP_LIT,       /* {"key": value, ...} */
+    AGL_NODE_STRUCT_LIT,    /* Point { x: 1, y: 2 } */
+    AGL_NODE_LAMBDA,        /* fn(x: int) -> int { ... } (anonymous function) */
+    AGL_NODE_RESULT_OK,     /* ok(expr) */
+    AGL_NODE_RESULT_ERR,    /* err(expr) */
+    AGL_NODE_MATCH_EXPR,    /* match expr { ok(n) -> expr, err(n) -> expr } */
 
     /* Statements */
-    AGO_NODE_EXPR_STMT,     /* expression as statement */
-    AGO_NODE_ASSIGN_STMT,   /* x = expr */
-    AGO_NODE_LET_STMT,      /* let x = expr */
-    AGO_NODE_VAR_STMT,      /* var x = expr */
-    AGO_NODE_RETURN_STMT,   /* return expr */
-    AGO_NODE_IF_STMT,       /* if cond { ... } else { ... } */
-    AGO_NODE_WHILE_STMT,    /* while cond { ... } */
-    AGO_NODE_FOR_STMT,      /* for item in collection { ... } */
-    AGO_NODE_BREAK_STMT,    /* break */
-    AGO_NODE_CONTINUE_STMT, /* continue */
-    AGO_NODE_BLOCK,         /* { stmt; stmt; ... } */
+    AGL_NODE_EXPR_STMT,     /* expression as statement */
+    AGL_NODE_ASSIGN_STMT,   /* x = expr */
+    AGL_NODE_LET_STMT,      /* let x = expr */
+    AGL_NODE_VAR_STMT,      /* var x = expr */
+    AGL_NODE_RETURN_STMT,   /* return expr */
+    AGL_NODE_IF_STMT,       /* if cond { ... } else { ... } */
+    AGL_NODE_WHILE_STMT,    /* while cond { ... } */
+    AGL_NODE_FOR_STMT,      /* for item in collection { ... } */
+    AGL_NODE_BREAK_STMT,    /* break */
+    AGL_NODE_CONTINUE_STMT, /* continue */
+    AGL_NODE_BLOCK,         /* { stmt; stmt; ... } */
 
     /* Top-level declarations */
-    AGO_NODE_FN_DECL,       /* fn name(params) -> type { body } */
-    AGO_NODE_STRUCT_DECL,   /* struct Name { fields } */
+    AGL_NODE_FN_DECL,       /* fn name(params) -> type { body } */
+    AGL_NODE_STRUCT_DECL,   /* struct Name { fields } */
 
     /* Module */
-    AGO_NODE_IMPORT,        /* import "path" */
+    AGL_NODE_IMPORT,        /* import "path" */
 
     /* Program root */
-    AGO_NODE_PROGRAM,       /* list of top-level statements/declarations */
-} AgoNodeKind;
+    AGL_NODE_PROGRAM,       /* list of top-level statements/declarations */
+} AglNodeKind;
 
 /* ---- Forward declaration ---- */
-typedef struct AgoNode AgoNode;
+typedef struct AglNode AglNode;
 
 /* ---- AST Node ---- */
 
-struct AgoNode {
-    AgoNodeKind kind;
+struct AglNode {
+    AglNodeKind kind;
     int line;
     int column;
 
     union {
-        /* AGO_NODE_INT_LIT */
+        /* AGL_NODE_INT_LIT */
         struct { int64_t value; } int_lit;
 
-        /* AGO_NODE_FLOAT_LIT */
+        /* AGL_NODE_FLOAT_LIT */
         struct { double value; } float_lit;
 
-        /* AGO_NODE_STRING_LIT (start includes quotes, length includes quotes) */
+        /* AGL_NODE_STRING_LIT (start includes quotes, length includes quotes) */
         struct { const char *value; int length; } string_lit;
 
-        /* AGO_NODE_BOOL_LIT */
+        /* AGL_NODE_BOOL_LIT */
         struct { bool value; } bool_lit;
 
-        /* AGO_NODE_IDENT */
+        /* AGL_NODE_IDENT */
         struct { const char *name; int length; } ident;
 
-        /* AGO_NODE_UNARY */
-        struct { AgoTokenKind op; AgoNode *operand; } unary;
+        /* AGL_NODE_UNARY */
+        struct { AglTokenKind op; AglNode *operand; } unary;
 
-        /* AGO_NODE_BINARY */
-        struct { AgoTokenKind op; AgoNode *left; AgoNode *right; } binary;
+        /* AGL_NODE_BINARY */
+        struct { AglTokenKind op; AglNode *left; AglNode *right; } binary;
 
-        /* AGO_NODE_CALL */
+        /* AGL_NODE_CALL */
         struct {
-            AgoNode *callee;
-            AgoNode **args;
+            AglNode *callee;
+            AglNode **args;
             int arg_count;
         } call;
 
-        /* AGO_NODE_INDEX */
-        struct { AgoNode *object; AgoNode *index; } index_expr;
+        /* AGL_NODE_INDEX */
+        struct { AglNode *object; AglNode *index; } index_expr;
 
-        /* AGO_NODE_ARRAY_LIT */
-        struct { AgoNode **elements; int count; } array_lit;
+        /* AGL_NODE_ARRAY_LIT */
+        struct { AglNode **elements; int count; } array_lit;
 
-        /* AGO_NODE_MAP_LIT */
+        /* AGL_NODE_MAP_LIT */
         struct {
             const char **keys;          /* arena-allocated */
             int *key_lengths;
-            AgoNode **values;           /* arena-allocated */
+            AglNode **values;           /* arena-allocated */
             int count;
         } map_lit;
 
-        /* AGO_NODE_STRUCT_LIT */
+        /* AGL_NODE_STRUCT_LIT */
         struct {
             const char *name;
             int name_length;
             const char **field_names;
             int *field_name_lengths;
-            AgoNode **field_values;
+            AglNode **field_values;
             int field_count;
         } struct_lit;
 
-        /* AGO_NODE_RESULT_OK / AGO_NODE_RESULT_ERR */
-        struct { AgoNode *value; } result_val;
+        /* AGL_NODE_RESULT_OK / AGL_NODE_RESULT_ERR */
+        struct { AglNode *value; } result_val;
 
-        /* AGO_NODE_MATCH_EXPR */
+        /* AGL_NODE_MATCH_EXPR */
         struct {
-            AgoNode *subject;
+            AglNode *subject;
             const char *ok_name;
             int ok_name_length;
-            AgoNode *ok_body;
+            AglNode *ok_body;
             const char *err_name;
             int err_name_length;
-            AgoNode *err_body;
+            AglNode *err_body;
         } match_expr;
 
-        /* AGO_NODE_ASSIGN_STMT */
+        /* AGL_NODE_ASSIGN_STMT */
         struct {
             const char *name;
             int name_length;
-            AgoNode *value;
+            AglNode *value;
         } assign_stmt;
 
-        /* AGO_NODE_EXPR_STMT */
-        struct { AgoNode *expr; } expr_stmt;
+        /* AGL_NODE_EXPR_STMT */
+        struct { AglNode *expr; } expr_stmt;
 
-        /* AGO_NODE_LET_STMT / AGO_NODE_VAR_STMT */
+        /* AGL_NODE_LET_STMT / AGL_NODE_VAR_STMT */
         struct {
             const char *name;
             int name_length;
             const char *type_name;   /* NULL if inferred */
             int type_name_length;
-            AgoNode *initializer;    /* NULL if none */
+            AglNode *initializer;    /* NULL if none */
         } var_decl;
 
-        /* AGO_NODE_RETURN_STMT */
-        struct { AgoNode *value; /* NULL for bare return */ } return_stmt;
+        /* AGL_NODE_RETURN_STMT */
+        struct { AglNode *value; /* NULL for bare return */ } return_stmt;
 
-        /* AGO_NODE_IF_STMT */
+        /* AGL_NODE_IF_STMT */
         struct {
-            AgoNode *condition;
-            AgoNode *then_block;
-            AgoNode *else_block;    /* NULL if no else */
+            AglNode *condition;
+            AglNode *then_block;
+            AglNode *else_block;    /* NULL if no else */
         } if_stmt;
 
-        /* AGO_NODE_WHILE_STMT */
-        struct { AgoNode *condition; AgoNode *body; } while_stmt;
+        /* AGL_NODE_WHILE_STMT */
+        struct { AglNode *condition; AglNode *body; } while_stmt;
 
-        /* AGO_NODE_FOR_STMT */
+        /* AGL_NODE_FOR_STMT */
         struct {
             const char *var_name;
             int var_name_length;
-            AgoNode *iterable;
-            AgoNode *body;
+            AglNode *iterable;
+            AglNode *body;
         } for_stmt;
 
-        /* AGO_NODE_BLOCK */
-        struct { AgoNode **stmts; int stmt_count; } block;
+        /* AGL_NODE_BLOCK */
+        struct { AglNode **stmts; int stmt_count; } block;
 
-        /* AGO_NODE_FN_DECL */
+        /* AGL_NODE_FN_DECL */
         struct {
             const char *name;
             int name_length;
@@ -179,10 +179,10 @@ struct AgoNode {
             int param_count;
             const char *return_type;    /* NULL if void */
             int return_type_length;
-            AgoNode *body;              /* block node */
+            AglNode *body;              /* block node */
         } fn_decl;
 
-        /* AGO_NODE_STRUCT_DECL */
+        /* AGL_NODE_STRUCT_DECL */
         struct {
             const char *name;
             int name_length;
@@ -193,14 +193,14 @@ struct AgoNode {
             int field_count;
         } struct_decl;
 
-        /* AGO_NODE_IMPORT */
+        /* AGL_NODE_IMPORT */
         struct { const char *path; int path_length; } import_stmt;
 
-        /* AGO_NODE_PROGRAM */
-        struct { AgoNode **decls; int decl_count; } program;
+        /* AGL_NODE_PROGRAM */
+        struct { AglNode **decls; int decl_count; } program;
     } as;
 };
 
 /* ---- AST construction (arena-allocated) ---- */
 
-AgoNode *ago_ast_new(AgoArena *arena, AgoNodeKind kind, int line, int column);
+AglNode *agl_ast_new(AglArena *arena, AglNodeKind kind, int line, int column);

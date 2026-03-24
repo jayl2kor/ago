@@ -5,18 +5,18 @@
 #define GC_INITIAL_THRESHOLD (1024 * 1024) /* 1 MB */
 #define GC_GROWTH_FACTOR 2
 
-AgoGc *ago_gc_new(void) {
-    AgoGc *gc = calloc(1, sizeof(AgoGc));
+AglGc *agl_gc_new(void) {
+    AglGc *gc = calloc(1, sizeof(AglGc));
     if (!gc) return NULL;
     gc->next_gc = GC_INITIAL_THRESHOLD;
     return gc;
 }
 
-void ago_gc_free(AgoGc *gc) {
+void agl_gc_free(AglGc *gc) {
     if (!gc) return;
-    AgoObj *obj = gc->objects;
+    AglObj *obj = gc->objects;
     while (obj) {
-        AgoObj *next = obj->next;
+        AglObj *next = obj->next;
         if (obj->cleanup) obj->cleanup(obj);
         free(obj);
         obj = next;
@@ -24,10 +24,10 @@ void ago_gc_free(AgoGc *gc) {
     free(gc);
 }
 
-void *ago_gc_alloc(AgoGc *gc, size_t size, void (*cleanup)(void *)) {
+void *agl_gc_alloc(AglGc *gc, size_t size, void (*cleanup)(void *)) {
     void *mem = calloc(1, size);
     if (!mem) return NULL;
-    AgoObj *obj = mem;
+    AglObj *obj = mem;
     obj->next = gc->objects;
     obj->size = size;
     obj->marked = false;
@@ -38,11 +38,11 @@ void *ago_gc_alloc(AgoGc *gc, size_t size, void (*cleanup)(void *)) {
     return mem;
 }
 
-void ago_gc_sweep(AgoGc *gc) {
-    AgoObj **p = &gc->objects;
+void agl_gc_sweep(AglGc *gc) {
+    AglObj **p = &gc->objects;
     while (*p) {
         if (!(*p)->marked) {
-            AgoObj *unreached = *p;
+            AglObj *unreached = *p;
             *p = unreached->next;
             gc->bytes_allocated -= unreached->size;
             if (unreached->cleanup) unreached->cleanup(unreached);
@@ -58,6 +58,6 @@ void ago_gc_sweep(AgoGc *gc) {
     if (gc->next_gc < GC_INITIAL_THRESHOLD) gc->next_gc = GC_INITIAL_THRESHOLD;
 }
 
-int ago_gc_object_count(const AgoGc *gc) {
+int agl_gc_object_count(const AglGc *gc) {
     return gc->object_count;
 }

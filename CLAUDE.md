@@ -1,4 +1,4 @@
-# Ago Programming Language
+# Agl Programming Language
 
 A medium-level programming language designed for AI agents.
 
@@ -15,7 +15,7 @@ make clean  # clean build artifacts
 ```
 src/       — compiler/interpreter source (C11)
 tests/     — test files
-examples/  — .ago example programs
+examples/  — .agl example programs
 ```
 
 ## Conventions
@@ -26,23 +26,23 @@ examples/  — .ago example programs
 - No external dependencies beyond libc for core compiler
 
 ### Naming
-- **Types**: PascalCase with Ago prefix — `AgoLexer`, `AgoToken`, `AgoValue`
-- **Functions**: snake_case with `ago_` prefix — `ago_lexer_next_token()`
-- **Enums**: SCREAMING_SNAKE with `AGO_` prefix — `AGO_TOKEN_INT`, `AGO_TOKEN_EOF`
-- **Macros**: SCREAMING_SNAKE — `AGO_VERSION`, `AGO_ASSERT`
+- **Types**: PascalCase with Agl prefix — `AglLexer`, `AglToken`, `AglValue`
+- **Functions**: snake_case with `agl_` prefix — `agl_lexer_next_token()`
+- **Enums**: SCREAMING_SNAKE with `AGL_` prefix — `AGL_TOKEN_INT`, `AGL_TOKEN_EOF`
+- **Macros**: SCREAMING_SNAKE — `AGL_VERSION`, `AGL_ASSERT`
 
 ### Code Patterns
 - `static` for all functions NOT exposed in a `.h` header
 - `const` on pointer parameters that are not mutated
-- Error return: set error on `AgoCtx *`, return NULL/false — `ago_error_set(ctx, code, fmt, ...)`
+- Error return: set error on `AglCtx *`, return NULL/false — `agl_error_set(ctx, code, fmt, ...)`
 - String ownership: arena-owned or interned. Never return a `char *` that the caller must free.
-- Compiler memory: arena allocator for AST/tokens. `ago_arena_free()` at end of compilation.
-- Runtime memory: `ago_alloc()` for GC-tracked heap objects.
+- Compiler memory: arena allocator for AST/tokens. `agl_arena_free()` at end of compilation.
+- Runtime memory: `agl_alloc()` for GC-tracked heap objects.
 
 ### Tests
 - One test file per module (`tests/test_lexer.c`, `tests/test_parser.c`)
 - `tests/` directory owned by @test-engineer
-- Test harness: `AgoTestCtx` struct, no global state
+- Test harness: `AglTestCtx` struct, no global state
 
 ## Agents
 
@@ -58,7 +58,7 @@ examples/  — .ago example programs
 
 | Skill | Purpose |
 |-------|---------|
-| `/run [file]` | Ago 프로그램 빌드 & 실행 |
+| `/run [file]` | Agl 프로그램 빌드 & 실행 |
 | `/test [module]` | 테스트 실행 + 결과 요약 |
 | `/check` | 커밋 전 전체 검증 (빌드→테스트→예제→메모리검사) |
 | `/status` | 프로젝트 현황 개요 |

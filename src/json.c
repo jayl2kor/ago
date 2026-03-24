@@ -6,8 +6,8 @@ typedef struct {
     const char *src;
     int len;
     int pos;
-    AgoArena *arena;
-    AgoGc *gc;
+    AglArena *arena;
+    AglGc *gc;
     char err_msg[256];
     bool has_error;
 } JsonParser;
@@ -53,10 +53,10 @@ static bool jp_match_str(JsonParser *p, const char *s, int slen) {
 }
 
 /* Forward declaration */
-static AgoVal jp_parse_value(JsonParser *p);
+static AglVal jp_parse_value(JsonParser *p);
 
 /* Check if current position (after whitespace) is at a string start.
- * Ago strings may contain \" (backslash-quote) where standard JSON has ".
+ * Agl strings may contain \" (backslash-quote) where standard JSON has ".
  * We accept both " and \" as string delimiters. */
 static bool jp_at_string(JsonParser *p) {
     jp_skip_ws(p);
@@ -72,7 +72,7 @@ static void jp_skip_open_quote(JsonParser *p) {
     p->pos++; /* skip quote */
 }
 
-static AgoVal jp_parse_string(JsonParser *p) {
+static AglVal jp_parse_string(JsonParser *p) {
     /* Skip opening quote (either " or \") */
     bool escaped_delim = (p->pos < p->len && p->src[p->pos] == '\\');
     jp_skip_open_quote(p);
@@ -97,7 +97,7 @@ static AgoVal jp_parse_string(JsonParser *p) {
         }
         if (p->pos >= p->len) { jp_error(p, "unterminated string"); return val_nil(); }
         /* Content is raw between the delimiters */
-        char *buf = ago_arena_alloc(p->arena, (size_t)(out_len > 0 ? out_len : 1));
+        char *buf = agl_arena_alloc(p->arena, (size_t)(out_len > 0 ? out_len : 1));
         if (!buf) { jp_error(p, "out of memory"); return val_nil(); }
         memcpy(buf, p->src + start, (size_t)out_len);
         p->pos += 2; /* skip closing \" */
@@ -132,7 +132,7 @@ static AgoVal jp_parse_string(JsonParser *p) {
     if (p->pos >= p->len) { jp_error(p, "unterminated string"); return val_nil(); }
 
     /* Allocate and fill */
-    char *buf = ago_arena_alloc(p->arena, (size_t)(out_len > 0 ? out_len : 1));
+    char *buf = agl_arena_alloc(p->arena, (size_t)(out_len > 0 ? out_len : 1));
     if (!buf) { jp_error(p, "out of memory"); return val_nil(); }
 
     int wi = 0;
@@ -162,7 +162,7 @@ static AgoVal jp_parse_string(JsonParser *p) {
     return val_string(buf, out_len);
 }
 
-static AgoVal jp_parse_number(JsonParser *p) {
+static AglVal jp_parse_number(JsonParser *p) {
     int start = p->pos;
     bool has_decimal = false;
 
@@ -209,20 +209,20 @@ static AgoVal jp_parse_number(JsonParser *p) {
     }
 }
 
-static AgoVal jp_parse_array(JsonParser *p) {
+static AglVal jp_parse_array(JsonParser *p) {
     p->pos++; /* skip '[' */
 
-    AgoVal items[MAX_ARRAY_SIZE];
+    AglVal items[MAX_ARRAY_SIZE];
     int count = 0;
 
     jp_skip_ws(p);
     if (jp_peek(p) == ']') {
         p->pos++;
-        AgoArrayVal *arr = ago_gc_alloc(p->gc, sizeof(AgoArrayVal), array_cleanup);
+        AglArrayVal *arr = agl_gc_alloc(p->gc, sizeof(AglArrayVal), array_cleanup);
         if (!arr) { jp_error(p, "out of memory"); return val_nil(); }
         arr->count = 0;
         arr->elements = NULL;
-        AgoVal v;
+        AglVal v;
         v.kind = VAL_ARRAY;
         v.as.array = arr;
         return v;
@@ -240,37 +240,37 @@ static AgoVal jp_parse_array(JsonParser *p) {
         return val_nil();
     }
 
-    AgoArrayVal *arr = ago_gc_alloc(p->gc, sizeof(AgoArrayVal), array_cleanup);
+    AglArrayVal *arr = agl_gc_alloc(p->gc, sizeof(AglArrayVal), array_cleanup);
     if (!arr) { jp_error(p, "out of memory"); return val_nil(); }
     arr->count = count;
-    arr->elements = count > 0 ? malloc(sizeof(AgoVal) * (size_t)count) : NULL;
+    arr->elements = count > 0 ? malloc(sizeof(AglVal) * (size_t)count) : NULL;
     if (count > 0 && !arr->elements) { jp_error(p, "out of memory"); return val_nil(); }
-    if (count > 0) memcpy(arr->elements, items, sizeof(AgoVal) * (size_t)count);
+    if (count > 0) memcpy(arr->elements, items, sizeof(AglVal) * (size_t)count);
 
-    AgoVal v;
+    AglVal v;
     v.kind = VAL_ARRAY;
     v.as.array = arr;
     return v;
 }
 
-static AgoVal jp_parse_object(JsonParser *p) {
+static AglVal jp_parse_object(JsonParser *p) {
     p->pos++; /* skip '{' */
 
     const char *keys[MAX_MAP_SIZE];
     int key_lengths[MAX_MAP_SIZE];
-    AgoVal values[MAX_MAP_SIZE];
+    AglVal values[MAX_MAP_SIZE];
     int count = 0;
 
     jp_skip_ws(p);
     if (jp_match(p, '}')) {
-        AgoMapVal *m = ago_gc_alloc(p->gc, sizeof(AgoMapVal), map_cleanup);
+        AglMapVal *m = agl_gc_alloc(p->gc, sizeof(AglMapVal), map_cleanup);
         if (!m) { jp_error(p, "out of memory"); return val_nil(); }
         m->count = 0;
         m->capacity = 0;
         m->keys = NULL;
         m->key_lengths = NULL;
         m->values = NULL;
-        AgoVal v;
+        AglVal v;
         v.kind = VAL_MAP;
         v.as.map = m;
         return v;
@@ -282,7 +282,7 @@ static AgoVal jp_parse_object(JsonParser *p) {
         jp_skip_ws(p);
         if (!jp_at_string(p)) { jp_error(p, "expected string key in object"); return val_nil(); }
 
-        AgoVal key_val = jp_parse_string(p);
+        AglVal key_val = jp_parse_string(p);
         if (p->has_error) return val_nil();
 
         keys[count] = key_val.as.string.data;
@@ -302,13 +302,13 @@ static AgoVal jp_parse_object(JsonParser *p) {
         return val_nil();
     }
 
-    AgoMapVal *m = ago_gc_alloc(p->gc, sizeof(AgoMapVal), map_cleanup);
+    AglMapVal *m = agl_gc_alloc(p->gc, sizeof(AglMapVal), map_cleanup);
     if (!m) { jp_error(p, "out of memory"); return val_nil(); }
     m->count = count;
     m->capacity = count;
     m->keys = count > 0 ? malloc(sizeof(char *) * (size_t)count) : NULL;
     m->key_lengths = count > 0 ? malloc(sizeof(int) * (size_t)count) : NULL;
-    m->values = count > 0 ? malloc(sizeof(AgoVal) * (size_t)count) : NULL;
+    m->values = count > 0 ? malloc(sizeof(AglVal) * (size_t)count) : NULL;
     if (count > 0 && (!m->keys || !m->key_lengths || !m->values)) {
         jp_error(p, "out of memory");
         return val_nil();
@@ -319,13 +319,13 @@ static AgoVal jp_parse_object(JsonParser *p) {
         m->values[i] = values[i];
     }
 
-    AgoVal v;
+    AglVal v;
     v.kind = VAL_MAP;
     v.as.map = m;
     return v;
 }
 
-static AgoVal jp_parse_value(JsonParser *p) {
+static AglVal jp_parse_value(JsonParser *p) {
     jp_skip_ws(p);
     if (p->pos >= p->len) { jp_error(p, "unexpected end of input"); return val_nil(); }
 
@@ -346,7 +346,7 @@ static AgoVal jp_parse_value(JsonParser *p) {
     return val_nil();
 }
 
-AgoVal ago_json_parse(const char *input, int length, AgoArena *arena, AgoGc *gc) {
+AglVal agl_json_parse(const char *input, int length, AglArena *arena, AglGc *gc) {
     JsonParser p;
     p.src = input;
     p.len = length;
@@ -356,10 +356,10 @@ AgoVal ago_json_parse(const char *input, int length, AgoArena *arena, AgoGc *gc)
     p.has_error = false;
     p.err_msg[0] = '\0';
 
-    AgoVal parsed = jp_parse_value(&p);
+    AglVal parsed = jp_parse_value(&p);
 
     /* Build result */
-    AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+    AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
     if (!rv) {
         /* Emergency fallback: return nil */
         return val_nil();
@@ -367,7 +367,7 @@ AgoVal ago_json_parse(const char *input, int length, AgoArena *arena, AgoGc *gc)
 
     if (p.has_error) {
         int mlen = (int)strlen(p.err_msg);
-        char *msg = ago_arena_alloc(arena, (size_t)mlen);
+        char *msg = agl_arena_alloc(arena, (size_t)mlen);
         if (msg) memcpy(msg, p.err_msg, (size_t)mlen);
         rv->is_ok = false;
         rv->value = val_string(msg ? msg : p.err_msg, mlen);
@@ -377,7 +377,7 @@ AgoVal ago_json_parse(const char *input, int length, AgoArena *arena, AgoGc *gc)
         if (p.pos < p.len) {
             const char *trail_msg = "unexpected trailing content";
             int mlen = (int)strlen(trail_msg);
-            char *msg = ago_arena_alloc(arena, (size_t)mlen);
+            char *msg = agl_arena_alloc(arena, (size_t)mlen);
             if (msg) memcpy(msg, trail_msg, (size_t)mlen);
             rv->is_ok = false;
             rv->value = val_string(msg ? msg : trail_msg, mlen);
@@ -387,7 +387,7 @@ AgoVal ago_json_parse(const char *input, int length, AgoArena *arena, AgoGc *gc)
         }
     }
 
-    AgoVal result;
+    AglVal result;
     result.kind = VAL_RESULT;
     result.as.result = rv;
     return result;
@@ -400,11 +400,11 @@ typedef struct {
     char *buf;
     int len;
     int cap;
-    AgoArena *arena;
+    AglArena *arena;
     bool oom;
 } JsonBuf;
 
-static void jb_init(JsonBuf *jb, AgoArena *arena) {
+static void jb_init(JsonBuf *jb, AglArena *arena) {
     jb->cap = 256;
     jb->buf = malloc((size_t)jb->cap);
     jb->len = 0;
@@ -460,9 +460,9 @@ static void jb_append_escaped_string(JsonBuf *jb, const char *s, int slen) {
     jb_append_char(jb, '"');
 }
 
-static void jb_stringify_val(JsonBuf *jb, AgoVal val);
+static void jb_stringify_val(JsonBuf *jb, AglVal val);
 
-static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
+static void jb_stringify_val(JsonBuf *jb, AglVal val) {
     if (jb->oom) return;
 
     switch (val.kind) {
@@ -492,7 +492,7 @@ static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
         break;
     }
     case VAL_ARRAY: {
-        AgoArrayVal *arr = val.as.array;
+        AglArrayVal *arr = val.as.array;
         jb_append_char(jb, '[');
         for (int i = 0; i < arr->count; i++) {
             if (i > 0) jb_append_char(jb, ',');
@@ -502,7 +502,7 @@ static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
         break;
     }
     case VAL_MAP: {
-        AgoMapVal *m = val.as.map;
+        AglMapVal *m = val.as.map;
         jb_append_char(jb, '{');
         for (int i = 0; i < m->count; i++) {
             if (i > 0) jb_append_char(jb, ',');
@@ -514,7 +514,7 @@ static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
         break;
     }
     case VAL_STRUCT: {
-        AgoStructVal *s = val.as.strct;
+        AglStructVal *s = val.as.strct;
         jb_append_char(jb, '{');
         for (int i = 0; i < s->field_count; i++) {
             if (i > 0) jb_append_char(jb, ',');
@@ -526,7 +526,7 @@ static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
         break;
     }
     case VAL_RESULT: {
-        AgoResultVal *r = val.as.result;
+        AglResultVal *r = val.as.result;
         jb_append_char(jb, '{');
         if (r->is_ok) {
             jb_append(jb, "\"ok\":", 5);
@@ -543,7 +543,7 @@ static void jb_stringify_val(JsonBuf *jb, AgoVal val) {
     }
 }
 
-const char *ago_json_stringify(AgoVal val, int *out_len, AgoArena *arena) {
+const char *agl_json_stringify(AglVal val, int *out_len, AglArena *arena) {
     JsonBuf jb;
     jb_init(&jb, arena);
     jb_stringify_val(&jb, val);
@@ -555,7 +555,7 @@ const char *ago_json_stringify(AgoVal val, int *out_len, AgoArena *arena) {
     }
 
     /* Copy into arena */
-    char *result = ago_arena_alloc(arena, (size_t)jb.len);
+    char *result = agl_arena_alloc(arena, (size_t)jb.len);
     if (result) {
         memcpy(result, jb.buf, (size_t)jb.len);
     }

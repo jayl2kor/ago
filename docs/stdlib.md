@@ -1,4 +1,4 @@
-# Ago Standard Library Reference
+# Agl Standard Library Reference
 
 ## 1. I/O
 
@@ -345,7 +345,7 @@ file_exists(path: string) -> bool
 Returns `true` if the file at `path` exists and is readable, `false` otherwise.
 
 ```ago
-if file_exists("config.ago") {
+if file_exists("config.agl") {
     print("found config")
 }
 ```

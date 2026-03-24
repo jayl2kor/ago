@@ -1,4 +1,4 @@
-# Ago Language Specification
+# Agl Language Specification
 
 ## 1. Lexical Elements
 
@@ -61,7 +61,7 @@ String literals are enclosed in double quotes. Escape sequences are supported wi
 
 ### Auto-Semicolon Insertion
 
-Ago uses Go-style automatic semicolon insertion. A newline acts as a statement terminator when the preceding token is one of:
+Agl uses Go-style automatic semicolon insertion. A newline acts as a statement terminator when the preceding token is one of:
 
 - Identifier, literal (`int`, `float`, `string`, `true`, `false`)
 - `break`, `continue`, `return`
@@ -392,11 +392,11 @@ A `result` value is truthy if it is `ok`, falsy if `err`.
 ### Import
 
 ```ago
-import "math"       // imports math.ago from same directory
-import "lib/utils"  // imports lib/utils.ago relative to current file
+import "math"       // imports math.agl from same directory
+import "lib/utils"  // imports lib/utils.agl relative to current file
 ```
 
-The import path is a string literal (without the `.ago` extension). Paths are resolved relative to the importing file's directory.
+The import path is a string literal (without the `.agl` extension). Paths are resolved relative to the importing file's directory.
 
 **Restrictions:**
 - Path traversal (`..`) is rejected.

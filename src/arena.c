@@ -1,8 +1,8 @@
 #include "arena.h"
 
-static AgoArenaBlock *arena_block_new(size_t min_size) {
-    size_t size = min_size > AGO_ARENA_BLOCK_SIZE ? min_size : AGO_ARENA_BLOCK_SIZE;
-    AgoArenaBlock *block = malloc(sizeof(AgoArenaBlock) + size);
+static AglArenaBlock *arena_block_new(size_t min_size) {
+    size_t size = min_size > AGL_ARENA_BLOCK_SIZE ? min_size : AGL_ARENA_BLOCK_SIZE;
+    AglArenaBlock *block = malloc(sizeof(AglArenaBlock) + size);
     if (!block) return NULL;
     block->next = NULL;
     block->size = size;
@@ -10,10 +10,10 @@ static AgoArenaBlock *arena_block_new(size_t min_size) {
     return block;
 }
 
-AgoArena *ago_arena_new(void) {
-    AgoArena *arena = malloc(sizeof(AgoArena));
+AglArena *agl_arena_new(void) {
+    AglArena *arena = malloc(sizeof(AglArena));
     if (!arena) return NULL;
-    arena->head = arena_block_new(AGO_ARENA_BLOCK_SIZE);
+    arena->head = arena_block_new(AGL_ARENA_BLOCK_SIZE);
     if (!arena->head) {
         free(arena);
         return NULL;
@@ -21,14 +21,14 @@ AgoArena *ago_arena_new(void) {
     return arena;
 }
 
-void *ago_arena_alloc(AgoArena *arena, size_t size) {
+void *agl_arena_alloc(AglArena *arena, size_t size) {
     if (!arena || size == 0) return NULL;
 
     /* Align to 8 bytes (guard against overflow near SIZE_MAX) */
     if (size > SIZE_MAX - 7) return NULL;
     size = (size + 7) & ~(size_t)7;
 
-    AgoArenaBlock *block = arena->head;
+    AglArenaBlock *block = arena->head;
 
     /* If current block has space, use it */
     if (block->used + size <= block->size) {
@@ -38,7 +38,7 @@ void *ago_arena_alloc(AgoArena *arena, size_t size) {
     }
 
     /* Otherwise allocate a new block */
-    AgoArenaBlock *new_block = arena_block_new(size);
+    AglArenaBlock *new_block = arena_block_new(size);
     if (!new_block) return NULL;
     new_block->next = arena->head;
     arena->head = new_block;
@@ -48,11 +48,11 @@ void *ago_arena_alloc(AgoArena *arena, size_t size) {
     return ptr;
 }
 
-void ago_arena_free(AgoArena *arena) {
+void agl_arena_free(AglArena *arena) {
     if (!arena) return;
-    AgoArenaBlock *block = arena->head;
+    AglArenaBlock *block = arena->head;
     while (block) {
-        AgoArenaBlock *next = block->next;
+        AglArenaBlock *next = block->next;
         free(block);
         block = next;
     }

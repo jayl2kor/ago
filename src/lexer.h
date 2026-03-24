@@ -7,77 +7,77 @@
 
 typedef enum {
     /* Literals */
-    AGO_TOKEN_INT,          /* 42 */
-    AGO_TOKEN_FLOAT,        /* 3.14 */
-    AGO_TOKEN_STRING,       /* "hello" */
-    AGO_TOKEN_TRUE,         /* true */
-    AGO_TOKEN_FALSE,        /* false */
+    AGL_TOKEN_INT,          /* 42 */
+    AGL_TOKEN_FLOAT,        /* 3.14 */
+    AGL_TOKEN_STRING,       /* "hello" */
+    AGL_TOKEN_TRUE,         /* true */
+    AGL_TOKEN_FALSE,        /* false */
 
     /* Identifier */
-    AGO_TOKEN_IDENT,        /* foo, bar, print */
+    AGL_TOKEN_IDENT,        /* foo, bar, print */
 
     /* Keywords */
-    AGO_TOKEN_LET,          /* let */
-    AGO_TOKEN_VAR,          /* var */
-    AGO_TOKEN_FN,           /* fn */
-    AGO_TOKEN_RETURN,       /* return */
-    AGO_TOKEN_IF,           /* if */
-    AGO_TOKEN_ELSE,         /* else */
-    AGO_TOKEN_WHILE,        /* while */
-    AGO_TOKEN_FOR,          /* for */
-    AGO_TOKEN_IN,           /* in */
-    AGO_TOKEN_STRUCT,       /* struct */
-    AGO_TOKEN_MATCH,        /* match */
-    AGO_TOKEN_OK,           /* ok */
-    AGO_TOKEN_ERR,          /* err */
-    AGO_TOKEN_IMPORT,       /* import */
-    AGO_TOKEN_BREAK,        /* break */
-    AGO_TOKEN_CONTINUE,     /* continue */
+    AGL_TOKEN_LET,          /* let */
+    AGL_TOKEN_VAR,          /* var */
+    AGL_TOKEN_FN,           /* fn */
+    AGL_TOKEN_RETURN,       /* return */
+    AGL_TOKEN_IF,           /* if */
+    AGL_TOKEN_ELSE,         /* else */
+    AGL_TOKEN_WHILE,        /* while */
+    AGL_TOKEN_FOR,          /* for */
+    AGL_TOKEN_IN,           /* in */
+    AGL_TOKEN_STRUCT,       /* struct */
+    AGL_TOKEN_MATCH,        /* match */
+    AGL_TOKEN_OK,           /* ok */
+    AGL_TOKEN_ERR,          /* err */
+    AGL_TOKEN_IMPORT,       /* import */
+    AGL_TOKEN_BREAK,        /* break */
+    AGL_TOKEN_CONTINUE,     /* continue */
 
     /* Operators */
-    AGO_TOKEN_PLUS,         /* + */
-    AGO_TOKEN_MINUS,        /* - */
-    AGO_TOKEN_STAR,         /* * */
-    AGO_TOKEN_SLASH,        /* / */
-    AGO_TOKEN_PERCENT,      /* % */
-    AGO_TOKEN_ASSIGN,       /* = */
-    AGO_TOKEN_EQ,           /* == */
-    AGO_TOKEN_NEQ,          /* != */
-    AGO_TOKEN_LT,           /* < */
-    AGO_TOKEN_GT,           /* > */
-    AGO_TOKEN_LE,           /* <= */
-    AGO_TOKEN_GE,           /* >= */
-    AGO_TOKEN_AND,          /* && */
-    AGO_TOKEN_OR,           /* || */
-    AGO_TOKEN_NOT,          /* ! */
-    AGO_TOKEN_ARROW,        /* -> */
-    AGO_TOKEN_DOT,          /* . */
+    AGL_TOKEN_PLUS,         /* + */
+    AGL_TOKEN_MINUS,        /* - */
+    AGL_TOKEN_STAR,         /* * */
+    AGL_TOKEN_SLASH,        /* / */
+    AGL_TOKEN_PERCENT,      /* % */
+    AGL_TOKEN_ASSIGN,       /* = */
+    AGL_TOKEN_EQ,           /* == */
+    AGL_TOKEN_NEQ,          /* != */
+    AGL_TOKEN_LT,           /* < */
+    AGL_TOKEN_GT,           /* > */
+    AGL_TOKEN_LE,           /* <= */
+    AGL_TOKEN_GE,           /* >= */
+    AGL_TOKEN_AND,          /* && */
+    AGL_TOKEN_OR,           /* || */
+    AGL_TOKEN_NOT,          /* ! */
+    AGL_TOKEN_ARROW,        /* -> */
+    AGL_TOKEN_DOT,          /* . */
 
     /* Delimiters */
-    AGO_TOKEN_LPAREN,       /* ( */
-    AGO_TOKEN_RPAREN,       /* ) */
-    AGO_TOKEN_LBRACE,       /* { */
-    AGO_TOKEN_RBRACE,       /* } */
-    AGO_TOKEN_LBRACKET,     /* [ */
-    AGO_TOKEN_RBRACKET,     /* ] */
-    AGO_TOKEN_COMMA,        /* , */
-    AGO_TOKEN_COLON,        /* : */
+    AGL_TOKEN_LPAREN,       /* ( */
+    AGL_TOKEN_RPAREN,       /* ) */
+    AGL_TOKEN_LBRACE,       /* { */
+    AGL_TOKEN_RBRACE,       /* } */
+    AGL_TOKEN_LBRACKET,     /* [ */
+    AGL_TOKEN_RBRACKET,     /* ] */
+    AGL_TOKEN_COMMA,        /* , */
+    AGL_TOKEN_COLON,        /* : */
 
     /* Special */
-    AGO_TOKEN_NEWLINE,      /* auto-inserted semicolon (statement terminator) */
-    AGO_TOKEN_EOF,
-    AGO_TOKEN_ERROR,        /* lexer error */
-} AgoTokenKind;
+    AGL_TOKEN_NEWLINE,      /* auto-inserted semicolon (statement terminator) */
+    AGL_TOKEN_EOF,
+    AGL_TOKEN_ERROR,        /* lexer error */
+} AglTokenKind;
 
 /* ---------------- Token ---------------- */
 
 typedef struct {
-    AgoTokenKind kind;
+    AglTokenKind kind;
     const char *start;      /* pointer into source (not owned) */
     int length;
     int line;
     int column;
-} AgoToken;
+} AglToken;
 
 /* ---------------- Lexer ---------------- */
 
@@ -89,15 +89,15 @@ typedef struct {
     int column;
     int paren_depth;        /* ( [ { depth — suppresses newline insertion */
     bool insert_newline;    /* whether next newline should become a token */
-    AgoCtx *ctx;            /* error context (not owned) */
-} AgoLexer;
+    AglCtx *ctx;            /* error context (not owned) */
+} AglLexer;
 
 /* Initialize a lexer for the given source text */
-void ago_lexer_init(AgoLexer *lexer, const char *source, const char *file,
-                    AgoCtx *ctx);
+void agl_lexer_init(AglLexer *lexer, const char *source, const char *file,
+                    AglCtx *ctx);
 
-/* Get the next token. Returns AGO_TOKEN_EOF at end. */
-AgoToken ago_lexer_next_token(AgoLexer *lexer);
+/* Get the next token. Returns AGL_TOKEN_EOF at end. */
+AglToken agl_lexer_next_token(AglLexer *lexer);
 
 /* Get a human-readable name for a token kind */
-const char *ago_token_kind_name(AgoTokenKind kind);
+const char *agl_token_kind_name(AglTokenKind kind);

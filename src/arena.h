@@ -8,24 +8,24 @@
  * No individual free — the entire arena is released together.
  */
 
-#define AGO_ARENA_BLOCK_SIZE (8 * 1024)  /* 8 KB per block */
+#define AGL_ARENA_BLOCK_SIZE (8 * 1024)  /* 8 KB per block */
 
-typedef struct AgoArenaBlock {
-    struct AgoArenaBlock *next;
+typedef struct AglArenaBlock {
+    struct AglArenaBlock *next;
     size_t size;
     size_t used;
     char data[];  /* flexible array member */
-} AgoArenaBlock;
+} AglArenaBlock;
 
-struct AgoArena {
-    AgoArenaBlock *head;
+struct AglArena {
+    AglArenaBlock *head;
 };
 
 /* Create a new arena */
-AgoArena *ago_arena_new(void);
+AglArena *agl_arena_new(void);
 
 /* Allocate `size` bytes from the arena (8-byte aligned) */
-void *ago_arena_alloc(AgoArena *arena, size_t size);
+void *agl_arena_alloc(AglArena *arena, size_t size);
 
 /* Free the entire arena and all its allocations */
-void ago_arena_free(AgoArena *arena);
+void agl_arena_free(AglArena *arena);

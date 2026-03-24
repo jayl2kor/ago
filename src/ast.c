@@ -1,10 +1,10 @@
 #include "ast.h"
 #include "arena.h"
 
-AgoNode *ago_ast_new(AgoArena *arena, AgoNodeKind kind, int line, int column) {
-    AgoNode *node = ago_arena_alloc(arena, sizeof(AgoNode));
+AglNode *agl_ast_new(AglArena *arena, AglNodeKind kind, int line, int column) {
+    AglNode *node = agl_arena_alloc(arena, sizeof(AglNode));
     if (!node) return NULL;
-    memset(node, 0, sizeof(AgoNode));
+    memset(node, 0, sizeof(AglNode));
     node->kind = kind;
     node->line = line;
     node->column = column;

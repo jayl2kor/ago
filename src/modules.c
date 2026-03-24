@@ -20,7 +20,7 @@ void path_dir(const char *filepath, char *buf, size_t bufsize) {
     buf[len] = '\0';
 }
 
-/* Resolve import path relative to current file. Appends .ago extension.
+/* Resolve import path relative to current file. Appends .agl extension.
  * Returns false if path escapes the base directory (path traversal). */
 bool resolve_import_path(const char *base_file, const char *import_path,
                                 int import_len, char *buf, size_t bufsize) {
@@ -33,9 +33,9 @@ bool resolve_import_path(const char *base_file, const char *import_path,
     path_dir(base_file, dir, sizeof(dir));
     int written;
     if (dir[0]) {
-        written = snprintf(buf, bufsize, "%s/%.*s.ago", dir, import_len, import_path);
+        written = snprintf(buf, bufsize, "%s/%.*s.agl", dir, import_len, import_path);
     } else {
-        written = snprintf(buf, bufsize, "%.*s.ago", import_len, import_path);
+        written = snprintf(buf, bufsize, "%.*s.agl", import_len, import_path);
     }
     if (written < 0 || (size_t)written >= bufsize) return false;
 
@@ -50,7 +50,7 @@ bool resolve_import_path(const char *base_file, const char *import_path,
 }
 
 /* Read entire file into malloc'd buffer. Returns NULL on failure. */
-char *ago_read_file(const char *path) {
+char *agl_read_file(const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
@@ -67,42 +67,42 @@ char *ago_read_file(const char *path) {
 
 /* ---- Module cache ---- */
 
-static bool module_loaded(AgoInterp *interp, const char *path) {
+static bool module_loaded(AglInterp *interp, const char *path) {
     for (int i = 0; i < interp->module_count; i++) {
         if (strcmp(interp->modules[i].path, path) == 0) return true;
     }
     return false;
 }
 
-static bool module_register(AgoInterp *interp, const char *path,
-                            char *source, AgoArena *arena) {
+static bool module_register(AglInterp *interp, const char *path,
+                            char *source, AglArena *arena) {
     if (interp->module_count >= MAX_MODULES) return false;
-    AgoModule *m = &interp->modules[interp->module_count++];
+    AglModule *m = &interp->modules[interp->module_count++];
     m->path = strdup(path);
     m->source = source;
     m->arena = arena;
     return true;
 }
 
-void module_cache_free(AgoInterp *interp) {
+void module_cache_free(AglInterp *interp) {
     for (int i = 0; i < interp->module_count; i++) {
         free(interp->modules[i].path);
         free(interp->modules[i].source);
-        ago_arena_free(interp->modules[i].arena);
+        agl_arena_free(interp->modules[i].arena);
     }
 }
 
 /* ---- Import execution ---- */
 
-void exec_import(AgoInterp *interp, AgoNode *node) {
+void exec_import(AglInterp *interp, AglNode *node) {
     /* Resolve path relative to current file — rejects path traversal */
     char resolved[512];
     if (!resolve_import_path(interp->file,
                              node->as.import_stmt.path,
                              node->as.import_stmt.path_length,
                              resolved, sizeof(resolved))) {
-        ago_error_set(interp->ctx, AGO_ERR_IO,
-                      ago_loc(NULL, node->line, node->column),
+        agl_error_set(interp->ctx, AGL_ERR_IO,
+                      agl_loc(NULL, node->line, node->column),
                       "invalid import path '%.*s'",
                       node->as.import_stmt.path_length,
                       node->as.import_stmt.path);
@@ -113,10 +113,10 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
     if (module_loaded(interp, resolved)) return;
 
     /* Read module file */
-    char *mod_source = ago_read_file(resolved);
+    char *mod_source = agl_read_file(resolved);
     if (!mod_source) {
-        ago_error_set(interp->ctx, AGO_ERR_IO,
-                      ago_loc(NULL, node->line, node->column),
+        agl_error_set(interp->ctx, AGL_ERR_IO,
+                      agl_loc(NULL, node->line, node->column),
                       "cannot open module '%.*s'",
                       node->as.import_stmt.path_length,
                       node->as.import_stmt.path);
@@ -124,15 +124,15 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
     }
 
     /* Parse module */
-    AgoArena *mod_arena = ago_arena_new();
+    AglArena *mod_arena = agl_arena_new();
     if (!mod_arena) { free(mod_source); return; }
 
-    AgoParser mod_parser;
-    ago_parser_init(&mod_parser, mod_source, resolved, mod_arena, interp->ctx);
-    AgoNode *mod_program = ago_parser_parse(&mod_parser);
+    AglParser mod_parser;
+    agl_parser_init(&mod_parser, mod_source, resolved, mod_arena, interp->ctx);
+    AglNode *mod_program = agl_parser_parse(&mod_parser);
 
-    if (!mod_program || ago_error_occurred(interp->ctx)) {
-        ago_arena_free(mod_arena);
+    if (!mod_program || agl_error_occurred(interp->ctx)) {
+        agl_arena_free(mod_arena);
         free(mod_source);
         return;
     }
@@ -141,19 +141,19 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
     bool mod_has_imports = false;
     for (int i = 0; i < mod_program->as.program.decl_count; i++) {
         if (mod_program->as.program.decls[i] &&
-            mod_program->as.program.decls[i]->kind == AGO_NODE_IMPORT) {
+            mod_program->as.program.decls[i]->kind == AGL_NODE_IMPORT) {
             mod_has_imports = true;
             break;
         }
     }
     if (!mod_has_imports) {
-        AgoSema *mod_sema = ago_sema_new(interp->ctx, mod_arena);
+        AglSema *mod_sema = agl_sema_new(interp->ctx, mod_arena);
         if (mod_sema) {
-            ago_sema_check(mod_sema, mod_program);
-            ago_sema_free(mod_sema);
+            agl_sema_check(mod_sema, mod_program);
+            agl_sema_free(mod_sema);
         }
-        if (ago_error_occurred(interp->ctx)) {
-            ago_arena_free(mod_arena);
+        if (agl_error_occurred(interp->ctx)) {
+            agl_arena_free(mod_arena);
             free(mod_source);
             return;
         }
@@ -161,10 +161,10 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
 
     /* Register module before execution to prevent circular imports */
     if (!module_register(interp, resolved, mod_source, mod_arena)) {
-        ago_arena_free(mod_arena);
+        agl_arena_free(mod_arena);
         free(mod_source);
-        ago_error_set(interp->ctx, AGO_ERR_RUNTIME,
-                      ago_loc(NULL, node->line, node->column),
+        agl_error_set(interp->ctx, AGL_ERR_RUNTIME,
+                      agl_loc(NULL, node->line, node->column),
                       "too many modules (max %d)", MAX_MODULES);
         return;
     }
@@ -174,7 +174,7 @@ void exec_import(AgoInterp *interp, AgoNode *node) {
     interp->file = resolved;
     for (int i = 0; i < mod_program->as.program.decl_count; i++) {
         exec_stmt(interp, mod_program->as.program.decls[i]);
-        if (ago_error_occurred(interp->ctx)) break;
+        if (agl_error_occurred(interp->ctx)) break;
     }
     interp->file = saved_file;
 }

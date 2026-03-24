@@ -1,6 +1,6 @@
 // Agent Demo - Ago AI agent capabilities showcase
 
-print("=== Ago Agent Demo ===")
+print("=== AGL Agent Demo ===")
 
 // 1. Environment variables
 let api_key = env_default("ANTHROPIC_API_KEY", "")

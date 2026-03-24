@@ -1,4 +1,4 @@
-# Ago Error Catalog
+# Agl Error Catalog
 
 ## Error Output Format
 
@@ -38,7 +38,7 @@ Maximum trace depth is 16 frames.
 
 ## Error Categories
 
-### AGO_ERR_SYNTAX -- Syntax Errors
+### AGL_ERR_SYNTAX -- Syntax Errors
 
 Produced by the lexer and parser during source analysis.
 
@@ -79,7 +79,7 @@ Produced by the lexer and parser during source analysis.
 
 ---
 
-### AGO_ERR_NAME -- Name Errors
+### AGL_ERR_NAME -- Name Errors
 
 Produced by semantic analysis and the interpreter for undefined or duplicate names.
 
@@ -91,7 +91,7 @@ Produced by semantic analysis and the interpreter for undefined or duplicate nam
 
 ---
 
-### AGO_ERR_TYPE -- Type Errors
+### AGL_ERR_TYPE -- Type Errors
 
 Produced by semantic analysis and the interpreter for type mismatches.
 
@@ -122,7 +122,7 @@ Produced by semantic analysis and the interpreter for type mismatches.
 
 ---
 
-### AGO_ERR_RUNTIME -- Runtime Errors
+### AGL_ERR_RUNTIME -- Runtime Errors
 
 Produced by the interpreter during execution.
 
@@ -164,14 +164,14 @@ Each built-in function validates its argument count:
 
 ---
 
-### AGO_ERR_IO -- I/O Errors
+### AGL_ERR_IO -- I/O Errors
 
 Produced by the module system during import resolution.
 
 | Message | Cause | Fix |
 |---------|-------|-----|
 | `invalid import path 'path'` | Path contains `..`, resolves outside base directory, or is too long. | Use a relative path without `..` that stays within the project. |
-| `cannot open module 'path'` | Module file does not exist or cannot be read. | Verify the file exists at the expected location (`.ago` extension is added automatically). |
+| `cannot open module 'path'` | Module file does not exist or cannot be read. | Verify the file exists at the expected location (`.agl` extension is added automatically). |
 
 ---
 
@@ -181,17 +181,17 @@ Produced by the module system during import resolution.
 
 Each error contains:
 
-- **Code**: One of `AGO_ERR_SYNTAX`, `AGO_ERR_TYPE`, `AGO_ERR_NAME`, `AGO_ERR_RUNTIME`, `AGO_ERR_IO`.
+- **Code**: One of `AGL_ERR_SYNTAX`, `AGL_ERR_TYPE`, `AGL_ERR_NAME`, `AGL_ERR_RUNTIME`, `AGL_ERR_IO`.
 - **Location**: File path, line number, column number.
 - **Message**: Human-readable description (max 256 characters).
 - **Stack trace**: Up to 16 call frames (populated for runtime errors inside functions).
 
 ### Error Propagation
 
-Ago uses single-error semantics. When an error occurs:
+Agl uses single-error semantics. When an error occurs:
 
-1. The error is set on the shared `AgoCtx` context.
-2. All subsequent evaluation and execution short-circuits (checks `ago_error_occurred`).
+1. The error is set on the shared `AglCtx` context.
+2. All subsequent evaluation and execution short-circuits (checks `agl_error_occurred`).
 3. The error is printed to stderr and the program exits with a nonzero status.
 
 Only one error is reported per run. The first error encountered halts execution.

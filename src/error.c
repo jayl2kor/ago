@@ -1,10 +1,10 @@
 #include "error.h"
 
-AgoCtx *ago_ctx_new(void) {
-    AgoCtx *ctx = malloc(sizeof(AgoCtx));
+AglCtx *agl_ctx_new(void) {
+    AglCtx *ctx = malloc(sizeof(AglCtx));
     if (!ctx) return NULL;
     ctx->has_error = false;
-    ctx->error.code = AGO_ERR_NONE;
+    ctx->error.code = AGL_ERR_NONE;
     ctx->error.message[0] = '\0';
     ctx->error.trace_count = 0;
     ctx->trace_cb = NULL;
@@ -12,11 +12,11 @@ AgoCtx *ago_ctx_new(void) {
     return ctx;
 }
 
-void ago_ctx_free(AgoCtx *ctx) {
+void agl_ctx_free(AglCtx *ctx) {
     free(ctx);
 }
 
-void ago_error_set(AgoCtx *ctx, AgoErrorCode code, AgoSourceLoc loc,
+void agl_error_set(AglCtx *ctx, AglErrorCode code, AglSourceLoc loc,
                    const char *fmt, ...) {
     if (!ctx) return;
     ctx->has_error = true;
@@ -35,24 +35,24 @@ void ago_error_set(AgoCtx *ctx, AgoErrorCode code, AgoSourceLoc loc,
     }
 }
 
-bool ago_error_occurred(const AgoCtx *ctx) {
+bool agl_error_occurred(const AglCtx *ctx) {
     return ctx && ctx->has_error;
 }
 
-const AgoError *ago_error_get(const AgoCtx *ctx) {
+const AglError *agl_error_get(const AglCtx *ctx) {
     if (!ctx || !ctx->has_error) return NULL;
     return &ctx->error;
 }
 
-void ago_error_clear(AgoCtx *ctx) {
+void agl_error_clear(AglCtx *ctx) {
     if (!ctx) return;
     ctx->has_error = false;
-    ctx->error.code = AGO_ERR_NONE;
+    ctx->error.code = AGL_ERR_NONE;
     ctx->error.message[0] = '\0';
     ctx->error.trace_count = 0;
 }
 
-void ago_error_print(const AgoError *err) {
+void agl_error_print(const AglError *err) {
     if (!err) return;
     if (err->loc.file) {
         fprintf(stderr, "%s:%d:%d: error: %s\n",
@@ -72,7 +72,7 @@ void ago_error_print(const AgoError *err) {
     }
 }
 
-AgoSourceLoc ago_loc(const char *file, int line, int column) {
-    AgoSourceLoc loc = { .file = file, .line = line, .column = column };
+AglSourceLoc agl_loc(const char *file, int line, int column) {
+    AglSourceLoc loc = { .file = file, .line = line, .column = column };
     return loc;
 }

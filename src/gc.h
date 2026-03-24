@@ -4,43 +4,43 @@
 #include <stddef.h>
 
 /* GC object header — must be first field of every GC-tracked object.
- * The interpreter casts between AgoObj* and the concrete type. */
-typedef struct AgoObj {
-    struct AgoObj *next;            /* intrusive linked list of all objects */
+ * The interpreter casts between AglObj* and the concrete type. */
+typedef struct AglObj {
+    struct AglObj *next;            /* intrusive linked list of all objects */
     size_t size;                    /* allocation size for GC accounting */
     void (*cleanup)(void *obj);     /* free internal buffers before sweep */
     bool marked;
-} AgoObj;
+} AglObj;
 
 /* GC state */
 typedef struct {
-    AgoObj *objects;        /* head of all-objects linked list */
+    AglObj *objects;        /* head of all-objects linked list */
     int object_count;
     size_t bytes_allocated;
     size_t next_gc;         /* collection threshold in bytes */
-} AgoGc;
+} AglGc;
 
 /* Create / destroy */
-AgoGc *ago_gc_new(void);
-void ago_gc_free(AgoGc *gc);
+AglGc *agl_gc_new(void);
+void agl_gc_free(AglGc *gc);
 
-/* Allocate a GC-tracked object of `size` bytes (includes AgoObj header).
+/* Allocate a GC-tracked object of `size` bytes (includes AglObj header).
  * `cleanup` is called before free (NULL if none needed).
- * Returns pointer to the object (first field is AgoObj). */
-void *ago_gc_alloc(AgoGc *gc, size_t size, void (*cleanup)(void *));
+ * Returns pointer to the object (first field is AglObj). */
+void *agl_gc_alloc(AglGc *gc, size_t size, void (*cleanup)(void *));
 
 /* Mark an object as reachable (no-op if NULL or already marked) */
-static inline void ago_gc_mark(AgoObj *obj) {
+static inline void agl_gc_mark(AglObj *obj) {
     if (obj && !obj->marked) obj->marked = true;
 }
 
 /* Sweep: free all unmarked objects, reset marks on survivors */
-void ago_gc_sweep(AgoGc *gc);
+void agl_gc_sweep(AglGc *gc);
 
 /* Number of live tracked objects */
-int ago_gc_object_count(const AgoGc *gc);
+int agl_gc_object_count(const AglGc *gc);
 
 /* Check if collection should run (bytes_allocated > next_gc) */
-static inline bool ago_gc_should_collect(const AgoGc *gc) {
+static inline bool agl_gc_should_collect(const AglGc *gc) {
     return gc->bytes_allocated > gc->next_gc;
 }

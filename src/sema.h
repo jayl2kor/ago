@@ -6,13 +6,13 @@
 
 /* Semantic analysis: name resolution, immutability, arity checks.
  * Run after parsing, before interpretation.
- * Errors are reported via AgoCtx. */
+ * Errors are reported via AglCtx. */
 
-typedef struct AgoSema AgoSema;
+typedef struct AglSema AglSema;
 
 /* Create / destroy */
-AgoSema *ago_sema_new(AgoCtx *ctx, AgoArena *arena);
-void ago_sema_free(AgoSema *sema);
+AglSema *agl_sema_new(AglCtx *ctx, AglArena *arena);
+void agl_sema_free(AglSema *sema);
 
 /* Analyze a program AST. Returns true if no errors found. */
-bool ago_sema_check(AgoSema *sema, AgoNode *program);
+bool agl_sema_check(AglSema *sema, AglNode *program);

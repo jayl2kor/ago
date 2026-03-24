@@ -24,110 +24,110 @@ typedef enum {
     VAL_RESULT,
     VAL_MAP,
     VAL_NIL,
-} AgoValKind;
+} AglValKind;
 
-typedef struct AgoFnVal AgoFnVal;
-typedef struct AgoArrayVal AgoArrayVal;
-typedef struct AgoStructVal AgoStructVal;
-typedef struct AgoResultVal AgoResultVal;
-typedef struct AgoMapVal AgoMapVal;
+typedef struct AglFnVal AglFnVal;
+typedef struct AglArrayVal AglArrayVal;
+typedef struct AglStructVal AglStructVal;
+typedef struct AglResultVal AglResultVal;
+typedef struct AglMapVal AglMapVal;
 
-typedef struct AgoVal {
-    AgoValKind kind;
+typedef struct AglVal {
+    AglValKind kind;
     union {
         int64_t integer;
         double floating;
         bool boolean;
         struct { const char *data; int length; } string;
-        AgoFnVal *fn;
-        AgoArrayVal *array;
-        AgoStructVal *strct;
-        AgoResultVal *result;
-        AgoMapVal *map;
+        AglFnVal *fn;
+        AglArrayVal *array;
+        AglStructVal *strct;
+        AglResultVal *result;
+        AglMapVal *map;
     } as;
-} AgoVal;
+} AglVal;
 
 /* Forward declaration for bytecode chunk */
-typedef struct AgoChunk AgoChunk;
+typedef struct AglChunk AglChunk;
 
-struct AgoFnVal {
-    AgoObj obj;     /* GC header */
-    AgoNode *decl;          /* AST node (tree-walk path, NULL for VM-only) */
-    AgoChunk *chunk;        /* bytecode (VM path, NULL for tree-walk) */
+struct AglFnVal {
+    AglObj obj;     /* GC header */
+    AglNode *decl;          /* AST node (tree-walk path, NULL for VM-only) */
+    AglChunk *chunk;        /* bytecode (VM path, NULL for tree-walk) */
     int arity;              /* parameter count */
     int captured_count;
     const char **captured_names;        /* malloc'd */
     int *captured_name_lengths;         /* malloc'd */
-    AgoVal *captured_values;            /* malloc'd */
+    AglVal *captured_values;            /* malloc'd */
     bool *captured_immutable;           /* malloc'd */
 };
 
 #define MAX_ARRAY_SIZE 1024
 
-struct AgoArrayVal {
-    AgoObj obj;     /* GC header */
-    AgoVal *elements;   /* malloc'd */
+struct AglArrayVal {
+    AglObj obj;     /* GC header */
+    AglVal *elements;   /* malloc'd */
     int count;
 };
 
 #define MAX_STRUCT_FIELDS 64
 
-struct AgoStructVal {
-    AgoObj obj;     /* GC header */
+struct AglStructVal {
+    AglObj obj;     /* GC header */
     const char *type_name;
     int type_name_length;
     const char *field_names[MAX_STRUCT_FIELDS];
     int field_name_lengths[MAX_STRUCT_FIELDS];
-    AgoVal field_values[MAX_STRUCT_FIELDS];
+    AglVal field_values[MAX_STRUCT_FIELDS];
     int field_count;
 };
 
-struct AgoResultVal {
-    AgoObj obj;     /* GC header */
+struct AglResultVal {
+    AglObj obj;     /* GC header */
     bool is_ok;
-    AgoVal value;
+    AglVal value;
 };
 
 #define MAX_MAP_SIZE 256
 
-struct AgoMapVal {
-    AgoObj obj;             /* GC header */
+struct AglMapVal {
+    AglObj obj;             /* GC header */
     const char **keys;      /* malloc'd */
     int *key_lengths;       /* malloc'd */
-    AgoVal *values;         /* malloc'd */
+    AglVal *values;         /* malloc'd */
     int count;
     int capacity;
 };
 
 /* ---- Value constructors (inline for performance) ---- */
 
-static inline AgoVal val_int(int64_t v) {
-    return (AgoVal){VAL_INT, {.integer = v}};
+static inline AglVal val_int(int64_t v) {
+    return (AglVal){VAL_INT, {.integer = v}};
 }
-static inline AgoVal val_float(double v) {
-    return (AgoVal){VAL_FLOAT, {.floating = v}};
+static inline AglVal val_float(double v) {
+    return (AglVal){VAL_FLOAT, {.floating = v}};
 }
-static inline AgoVal val_bool(bool v) {
-    return (AgoVal){VAL_BOOL, {.boolean = v}};
+static inline AglVal val_bool(bool v) {
+    return (AglVal){VAL_BOOL, {.boolean = v}};
 }
-static inline AgoVal val_nil(void) {
-    return (AgoVal){VAL_NIL, {.integer = 0}};
+static inline AglVal val_nil(void) {
+    return (AglVal){VAL_NIL, {.integer = 0}};
 }
-static inline AgoVal val_string(const char *s, int len) {
-    AgoVal v;
+static inline AglVal val_string(const char *s, int len) {
+    AglVal v;
     v.kind = VAL_STRING;
     v.as.string.data = s;
     v.as.string.length = len;
     return v;
 }
-static inline AgoVal val_array(AgoArrayVal *a) {
-    AgoVal v; v.kind = VAL_ARRAY; v.as.array = a; return v;
+static inline AglVal val_array(AglArrayVal *a) {
+    AglVal v; v.kind = VAL_ARRAY; v.as.array = a; return v;
 }
-static inline AgoVal val_map(AgoMapVal *m) {
-    AgoVal v; v.kind = VAL_MAP; v.as.map = m; return v;
+static inline AglVal val_map(AglMapVal *m) {
+    AglVal v; v.kind = VAL_MAP; v.as.map = m; return v;
 }
-static inline AgoVal val_result(AgoResultVal *r) {
-    AgoVal v; v.kind = VAL_RESULT; v.as.result = r; return v;
+static inline AglVal val_result(AglResultVal *r) {
+    AglVal v; v.kind = VAL_RESULT; v.as.result = r; return v;
 }
 
 /* ---- Environment (variable bindings) ---- */
@@ -137,10 +137,10 @@ static inline AgoVal val_result(AgoResultVal *r) {
 typedef struct {
     const char *names[MAX_VARS];
     int name_lengths[MAX_VARS];
-    AgoVal values[MAX_VARS];
+    AglVal values[MAX_VARS];
     bool immutable[MAX_VARS];   /* true for let, false for var */
     int count;
-} AgoEnv;
+} AglEnv;
 
 /* ---- Interpreter state ---- */
 
@@ -152,55 +152,55 @@ typedef struct {
     int name_len;
     int line;
     int column;
-} AgoCallFrame;
+} AglCallFrame;
 
 typedef struct {
     char *path;
     char *source;       /* malloc'd source text — AST tokens point into this */
-    AgoArena *arena;    /* AST nodes live here */
-} AgoModule;
+    AglArena *arena;    /* AST nodes live here */
+} AglModule;
 
 typedef struct {
-    AgoEnv env;
-    AgoCtx *ctx;
-    AgoArena *arena;    /* temporary allocations */
-    AgoGc *gc;          /* GC-tracked runtime objects */
+    AglEnv env;
+    AglCtx *ctx;
+    AglArena *arena;    /* temporary allocations */
+    AglGc *gc;          /* GC-tracked runtime objects */
     const char *file;   /* current file path (for import resolution) */
-    AgoModule modules[MAX_MODULES];
+    AglModule modules[MAX_MODULES];
     int module_count;
     bool has_return;
-    AgoVal return_value;
+    AglVal return_value;
     jmp_buf return_jmp;
     bool return_jmp_set;
     int call_depth;
-    AgoCallFrame call_frames[MAX_CALL_DEPTH];
-} AgoInterp;
+    AglCallFrame call_frames[MAX_CALL_DEPTH];
+} AglInterp;
 
 /* ---- runtime.c ---- */
 
-const char *str_content(AgoVal s, int *out_len);
+const char *str_content(AglVal s, int *out_len);
 void array_cleanup(void *p);
 void fn_cleanup(void *p);
 void map_cleanup(void *p);
 
-void env_init(AgoEnv *env);
-bool env_define(AgoEnv *env, const char *name, int length, AgoVal val,
+void env_init(AglEnv *env);
+bool env_define(AglEnv *env, const char *name, int length, AglVal val,
                 bool is_immutable);
-AgoVal *env_get(AgoEnv *env, const char *name, int length);
+AglVal *env_get(AglEnv *env, const char *name, int length);
 /* Returns: 0=ok, 1=not found, 2=immutable */
-int env_assign(AgoEnv *env, const char *name, int length, AgoVal val);
+int env_assign(AglEnv *env, const char *name, int length, AglVal val);
 
-void mark_val(AgoVal val);
-void gc_collect(AgoInterp *interp);
+void mark_val(AglVal val);
+void gc_collect(AglInterp *interp);
 
-bool is_truthy(AgoVal val);
-void print_val_inline(AgoVal val);
-void builtin_print(AgoVal val);
+bool is_truthy(AglVal val);
+void print_val_inline(AglVal val);
+void builtin_print(AglVal val);
 
-/* Trace capture callback for ago_error_set */
-void capture_trace(void *data, AgoError *err);
+/* Trace capture callback for agl_error_set */
+void capture_trace(void *data, AglError *err);
 
-AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn, AgoVal *args,
+AglVal call_fn_direct(AglInterp *interp, AglFnVal *fn, AglVal *args,
                       int arg_count, int line, int column);
 
 /* ---- builtins.c ---- */
@@ -208,19 +208,19 @@ AgoVal call_fn_direct(AgoInterp *interp, AgoFnVal *fn, AgoVal *args,
 /* Try to dispatch a built-in function call.
  * Returns true if name matched a builtin (result stored in *out).
  * Returns false if not a builtin — caller should try user functions. */
-bool try_builtin_call(AgoInterp *interp, const char *name, int name_len,
-                      AgoNode *call_node, AgoVal *out);
+bool try_builtin_call(AglInterp *interp, const char *name, int name_len,
+                      AglNode *call_node, AglVal *out);
 
 /* ---- modules.c ---- */
 
 void path_dir(const char *filepath, char *buf, size_t bufsize);
 bool resolve_import_path(const char *base_file, const char *import_path,
                          int import_len, char *buf, size_t bufsize);
-char *ago_read_file(const char *path);
-void module_cache_free(AgoInterp *interp);
-void exec_import(AgoInterp *interp, AgoNode *node);
+char *agl_read_file(const char *path);
+void module_cache_free(AglInterp *interp);
+void exec_import(AglInterp *interp, AglNode *node);
 
 /* ---- interpreter.c ---- */
 
-AgoVal eval_expr(AgoInterp *interp, AgoNode *node);
-void exec_stmt(AgoInterp *interp, AgoNode *node);
+AglVal eval_expr(AglInterp *interp, AglNode *node);
+void exec_stmt(AglInterp *interp, AglNode *node);

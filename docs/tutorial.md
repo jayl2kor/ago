@@ -1,11 +1,11 @@
 # Getting Started with Ago
 
-Ago is a medium-level programming language designed for AI agents. This tutorial
+Agl is a medium-level programming language designed for AI agents. This tutorial
 walks you through the basics, from building the interpreter to writing real programs.
 
 ## 1. Building Ago
 
-Ago is written in C11 with no external dependencies. Build it with `make`:
+Agl is written in C11 with no external dependencies. Build it with `make`:
 
 ```bash
 git clone <repo-url>
@@ -16,7 +16,7 @@ make
 This produces the `ago` executable in the project root. To verify:
 
 ```bash
-./ago --version
+./agl --version
 ```
 
 To clean build artifacts and rebuild from scratch:
@@ -28,10 +28,10 @@ make
 
 ## 2. Running Programs
 
-Save your code in a `.ago` file and pass it to the interpreter:
+Save your code in a `.agl` file and pass it to the interpreter:
 
 ```bash
-./ago examples/hello.ago
+./agl examples/hello.agl
 ```
 
 ## 3. The REPL
@@ -39,17 +39,17 @@ Save your code in a `.ago` file and pass it to the interpreter:
 Launch an interactive session by running `ago` with no arguments:
 
 ```bash
-./ago
+./agl
 ```
 
 ```
 ago 0.1.0 — interactive REPL
 Type expressions or statements. Ctrl+D to exit.
 
-ago> print("Hello from the REPL!")
+agl> print("Hello from the REPL!")
 Hello from the REPL!
-ago> let x = 10 + 20
-ago> print(x)
+agl> let x = 10 + 20
+agl> print(x)
 30
 ```
 
@@ -57,10 +57,10 @@ Multi-line input is supported. The REPL waits for matching braces before
 executing:
 
 ```
-ago> fn square(n: int) -> int {
+agl> fn square(n: int) -> int {
 ...>     return n * n
 ...> }
-ago> print(square(7))
+agl> print(square(7))
 49
 ```
 
@@ -68,7 +68,7 @@ Press `Ctrl+D` to exit.
 
 ## 4. Hello World
 
-Create a file called `hello.ago`:
+Create a file called `hello.agl`:
 
 ```ago
 print("Hello, world!")
@@ -77,7 +77,7 @@ print("Hello, world!")
 Run it:
 
 ```bash
-./ago hello.ago
+./agl hello.agl
 ```
 
 Output:
@@ -90,7 +90,7 @@ Hello, world!
 
 ## 5. Variables: let vs var
 
-Ago has two ways to declare variables:
+Agl has two ways to declare variables:
 
 - `let` creates an **immutable** binding (cannot be reassigned).
 - `var` creates a **mutable** binding (can be reassigned).
@@ -108,7 +108,7 @@ Prefer `let` by default. Use `var` only when you need to reassign.
 
 ## 6. Types
 
-Ago has these built-in types:
+Agl has these built-in types:
 
 | Type     | Examples               |
 |----------|------------------------|
@@ -270,7 +270,7 @@ print(alice.active)  // true
 
 ## 10. Error Handling with Result and match
 
-Ago uses `Result` types instead of exceptions. Functions return `ok(value)`
+Agl uses `Result` types instead of exceptions. Functions return `ok(value)`
 on success or `err(message)` on failure. Use `match` to handle both cases:
 
 ```ago
@@ -325,7 +325,7 @@ print(squares)  // [1, 4, 9, 16, 25]
 
 ## 12. File I/O
 
-Ago provides built-in functions for file operations. They return `result`
+Agl provides built-in functions for file operations. They return `result`
 types so errors are handled explicitly:
 
 ### Writing a File
@@ -368,14 +368,14 @@ Split your code into multiple files with `import`. Given this project layout:
 
 ```
 project/
-  main.ago
-  math.ago
+  main.agl
+  math.agl
 ```
 
-Define shared functions in `math.ago`:
+Define shared functions in `math.agl`:
 
 ```ago
-// math.ago
+// math.agl
 
 fn square(n: int) -> int {
     return n * n
@@ -392,10 +392,10 @@ fn clamp(val: int, lo: int, hi: int) -> int {
 }
 ```
 
-Import and use them in `main.ago`:
+Import and use them in `main.agl`:
 
 ```ago
-// main.ago
+// main.agl
 
 import "math"
 
@@ -406,11 +406,11 @@ print(clamp(15, 0, 10)) // 10
 Run the program from the project directory:
 
 ```bash
-./ago project/main.ago
+./agl project/main.agl
 ```
 
 Key rules for imports:
-- The `.ago` extension is added automatically -- write `import "math"`, not `import "math.ago"`.
+- The `.agl` extension is added automatically -- write `import "math"`, not `import "math.agl"`.
 - Paths are relative to the importing file's directory.
 - Circular imports are handled safely (each module loads at most once).
 - Directory traversal with `..` is not allowed for security.

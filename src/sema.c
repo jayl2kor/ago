@@ -13,51 +13,51 @@ typedef struct {
     bool is_mutable;    /* true for var, false for let/param */
     bool is_function;
     int arity;          /* valid only if is_function */
-} AgoSemaVar;
+} AglSemaVar;
 
-typedef struct AgoScope {
-    struct AgoScope *parent;
-    AgoSemaVar vars[MAX_SCOPE_VARS];
+typedef struct AglScope {
+    struct AglScope *parent;
+    AglSemaVar vars[MAX_SCOPE_VARS];
     int var_count;
-} AgoScope;
+} AglScope;
 
-struct AgoSema {
-    AgoCtx *ctx;
-    AgoArena *arena;
-    AgoScope *scope;
+struct AglSema {
+    AglCtx *ctx;
+    AglArena *arena;
+    AglScope *scope;
 };
 
 /* ---- Scope helpers ---- */
 
-static AgoScope *scope_new(AgoSema *sema, AgoScope *parent) {
-    AgoScope *s = ago_arena_alloc(sema->arena, sizeof(AgoScope));
+static AglScope *scope_new(AglSema *sema, AglScope *parent) {
+    AglScope *s = agl_arena_alloc(sema->arena, sizeof(AglScope));
     if (!s) return NULL;
     s->parent = parent;
     s->var_count = 0;
     return s;
 }
 
-static bool scope_push(AgoSema *sema) {
-    AgoScope *s = scope_new(sema, sema->scope);
+static bool scope_push(AglSema *sema) {
+    AglScope *s = scope_new(sema, sema->scope);
     if (!s) {
-        ago_error_set(sema->ctx, AGO_ERR_RUNTIME,
-                      ago_loc(NULL, 0, 0), "out of memory");
+        agl_error_set(sema->ctx, AGL_ERR_RUNTIME,
+                      agl_loc(NULL, 0, 0), "out of memory");
         return false;
     }
     sema->scope = s;
     return true;
 }
 
-static void scope_pop(AgoSema *sema) {
+static void scope_pop(AglSema *sema) {
     if (sema->scope && sema->scope->parent) {
         sema->scope = sema->scope->parent;
     }
 }
 
-static bool scope_define(AgoScope *scope, const char *name, int length,
+static bool scope_define(AglScope *scope, const char *name, int length,
                          bool is_mutable, bool is_function, int arity) {
     if (scope->var_count >= MAX_SCOPE_VARS) return false;
-    AgoSemaVar *v = &scope->vars[scope->var_count++];
+    AglSemaVar *v = &scope->vars[scope->var_count++];
     v->name = name;
     v->name_length = length;
     v->is_mutable = is_mutable;
@@ -67,10 +67,10 @@ static bool scope_define(AgoScope *scope, const char *name, int length,
 }
 
 /* Look up a variable through the scope chain. Returns NULL if not found. */
-static AgoSemaVar *scope_lookup(AgoScope *scope, const char *name, int length) {
-    for (AgoScope *s = scope; s; s = s->parent) {
+static AglSemaVar *scope_lookup(AglScope *scope, const char *name, int length) {
+    for (AglScope *s = scope; s; s = s->parent) {
         for (int i = s->var_count - 1; i >= 0; i--) {
-            if (ago_str_eq(s->vars[i].name, s->vars[i].name_length,
+            if (agl_str_eq(s->vars[i].name, s->vars[i].name_length,
                            name, length)) {
                 return &s->vars[i];
             }
@@ -81,59 +81,59 @@ static AgoSemaVar *scope_lookup(AgoScope *scope, const char *name, int length) {
 
 /* ---- AST walking ---- */
 
-static void check_expr(AgoSema *sema, AgoNode *node);
-static void check_stmt(AgoSema *sema, AgoNode *node);
+static void check_expr(AglSema *sema, AglNode *node);
+static void check_stmt(AglSema *sema, AglNode *node);
 
-static void check_expr(AgoSema *sema, AgoNode *node) {
-    if (!node || ago_error_occurred(sema->ctx)) return;
+static void check_expr(AglSema *sema, AglNode *node) {
+    if (!node || agl_error_occurred(sema->ctx)) return;
 
     switch (node->kind) {
-    case AGO_NODE_INT_LIT:
-    case AGO_NODE_FLOAT_LIT:
-    case AGO_NODE_STRING_LIT:
-    case AGO_NODE_BOOL_LIT:
+    case AGL_NODE_INT_LIT:
+    case AGL_NODE_FLOAT_LIT:
+    case AGL_NODE_STRING_LIT:
+    case AGL_NODE_BOOL_LIT:
         break;
 
-    case AGO_NODE_IDENT: {
-        AgoSemaVar *v = scope_lookup(sema->scope,
+    case AGL_NODE_IDENT: {
+        AglSemaVar *v = scope_lookup(sema->scope,
                                      node->as.ident.name,
                                      node->as.ident.length);
         if (!v) {
-            ago_error_set(sema->ctx, AGO_ERR_NAME,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(sema->ctx, AGL_ERR_NAME,
+                          agl_loc(NULL, node->line, node->column),
                           "undefined variable '%.*s'",
                           node->as.ident.length, node->as.ident.name);
         }
         break;
     }
 
-    case AGO_NODE_UNARY:
+    case AGL_NODE_UNARY:
         check_expr(sema, node->as.unary.operand);
         break;
 
-    case AGO_NODE_BINARY:
+    case AGL_NODE_BINARY:
         check_expr(sema, node->as.binary.left);
-        if (node->as.binary.op != AGO_TOKEN_DOT) {
+        if (node->as.binary.op != AGL_TOKEN_DOT) {
             check_expr(sema, node->as.binary.right);
         }
         /* DOT right side is a field name, not a variable */
         break;
 
-    case AGO_NODE_CALL: {
+    case AGL_NODE_CALL: {
         check_expr(sema, node->as.call.callee);
         for (int i = 0; i < node->as.call.arg_count; i++) {
             check_expr(sema, node->as.call.args[i]);
         }
         /* Arity check for known functions */
-        if (node->as.call.callee->kind == AGO_NODE_IDENT &&
-            !ago_error_occurred(sema->ctx)) {
-            AgoSemaVar *fn = scope_lookup(sema->scope,
+        if (node->as.call.callee->kind == AGL_NODE_IDENT &&
+            !agl_error_occurred(sema->ctx)) {
+            AglSemaVar *fn = scope_lookup(sema->scope,
                                           node->as.call.callee->as.ident.name,
                                           node->as.call.callee->as.ident.length);
             if (fn && fn->is_function &&
                 node->as.call.arg_count != fn->arity) {
-                ago_error_set(sema->ctx, AGO_ERR_TYPE,
-                              ago_loc(NULL, node->line, node->column),
+                agl_error_set(sema->ctx, AGL_ERR_TYPE,
+                              agl_loc(NULL, node->line, node->column),
                               "expected %d arguments, got %d",
                               fn->arity, node->as.call.arg_count);
             }
@@ -141,30 +141,30 @@ static void check_expr(AgoSema *sema, AgoNode *node) {
         break;
     }
 
-    case AGO_NODE_INDEX:
+    case AGL_NODE_INDEX:
         check_expr(sema, node->as.index_expr.object);
         check_expr(sema, node->as.index_expr.index);
         break;
 
-    case AGO_NODE_ARRAY_LIT:
+    case AGL_NODE_ARRAY_LIT:
         for (int i = 0; i < node->as.array_lit.count; i++) {
             check_expr(sema, node->as.array_lit.elements[i]);
         }
         break;
 
-    case AGO_NODE_STRUCT_LIT:
+    case AGL_NODE_STRUCT_LIT:
         for (int i = 0; i < node->as.struct_lit.field_count; i++) {
             check_expr(sema, node->as.struct_lit.field_values[i]);
         }
         break;
 
-    case AGO_NODE_MAP_LIT:
+    case AGL_NODE_MAP_LIT:
         for (int i = 0; i < node->as.map_lit.count; i++) {
             check_expr(sema, node->as.map_lit.values[i]);
         }
         break;
 
-    case AGO_NODE_LAMBDA:
+    case AGL_NODE_LAMBDA:
         scope_push(sema);
         for (int i = 0; i < node->as.fn_decl.param_count; i++) {
             scope_define(sema->scope,
@@ -178,12 +178,12 @@ static void check_expr(AgoSema *sema, AgoNode *node) {
         scope_pop(sema);
         break;
 
-    case AGO_NODE_RESULT_OK:
-    case AGO_NODE_RESULT_ERR:
+    case AGL_NODE_RESULT_OK:
+    case AGL_NODE_RESULT_ERR:
         check_expr(sema, node->as.result_val.value);
         break;
 
-    case AGO_NODE_MATCH_EXPR:
+    case AGL_NODE_MATCH_EXPR:
         check_expr(sema, node->as.match_expr.subject);
         /* ok arm: bind name in a temporary scope */
         scope_push(sema);
@@ -210,43 +210,43 @@ static void check_expr(AgoSema *sema, AgoNode *node) {
     }
 }
 
-static void check_stmt(AgoSema *sema, AgoNode *node) {
-    if (!node || ago_error_occurred(sema->ctx)) return;
+static void check_stmt(AglSema *sema, AglNode *node) {
+    if (!node || agl_error_occurred(sema->ctx)) return;
 
     switch (node->kind) {
-    case AGO_NODE_EXPR_STMT:
+    case AGL_NODE_EXPR_STMT:
         check_expr(sema, node->as.expr_stmt.expr);
         break;
 
-    case AGO_NODE_LET_STMT:
-    case AGO_NODE_VAR_STMT:
+    case AGL_NODE_LET_STMT:
+    case AGL_NODE_VAR_STMT:
         if (node->as.var_decl.initializer) {
             check_expr(sema, node->as.var_decl.initializer);
         }
-        if (!ago_error_occurred(sema->ctx)) {
+        if (!agl_error_occurred(sema->ctx)) {
             scope_define(sema->scope,
                          node->as.var_decl.name,
                          node->as.var_decl.name_length,
-                         node->kind == AGO_NODE_VAR_STMT,
+                         node->kind == AGL_NODE_VAR_STMT,
                          false, 0);
         }
         break;
 
-    case AGO_NODE_ASSIGN_STMT: {
+    case AGL_NODE_ASSIGN_STMT: {
         check_expr(sema, node->as.assign_stmt.value);
-        if (ago_error_occurred(sema->ctx)) break;
-        AgoSemaVar *v = scope_lookup(sema->scope,
+        if (agl_error_occurred(sema->ctx)) break;
+        AglSemaVar *v = scope_lookup(sema->scope,
                                      node->as.assign_stmt.name,
                                      node->as.assign_stmt.name_length);
         if (!v) {
-            ago_error_set(sema->ctx, AGO_ERR_NAME,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(sema->ctx, AGL_ERR_NAME,
+                          agl_loc(NULL, node->line, node->column),
                           "undefined variable '%.*s'",
                           node->as.assign_stmt.name_length,
                           node->as.assign_stmt.name);
         } else if (!v->is_mutable) {
-            ago_error_set(sema->ctx, AGO_ERR_TYPE,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(sema->ctx, AGL_ERR_TYPE,
+                          agl_loc(NULL, node->line, node->column),
                           "cannot assign to immutable variable '%.*s'",
                           node->as.assign_stmt.name_length,
                           node->as.assign_stmt.name);
@@ -254,13 +254,13 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
         break;
     }
 
-    case AGO_NODE_RETURN_STMT:
+    case AGL_NODE_RETURN_STMT:
         if (node->as.return_stmt.value) {
             check_expr(sema, node->as.return_stmt.value);
         }
         break;
 
-    case AGO_NODE_IF_STMT:
+    case AGL_NODE_IF_STMT:
         check_expr(sema, node->as.if_stmt.condition);
         if (node->as.if_stmt.then_block) {
             check_stmt(sema, node->as.if_stmt.then_block);
@@ -270,14 +270,14 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
         }
         break;
 
-    case AGO_NODE_WHILE_STMT:
+    case AGL_NODE_WHILE_STMT:
         check_expr(sema, node->as.while_stmt.condition);
         if (node->as.while_stmt.body) {
             check_stmt(sema, node->as.while_stmt.body);
         }
         break;
 
-    case AGO_NODE_FOR_STMT:
+    case AGL_NODE_FOR_STMT:
         check_expr(sema, node->as.for_stmt.iterable);
         scope_push(sema);
         scope_define(sema->scope,
@@ -290,21 +290,21 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
         scope_pop(sema);
         break;
 
-    case AGO_NODE_BREAK_STMT:
-    case AGO_NODE_CONTINUE_STMT:
+    case AGL_NODE_BREAK_STMT:
+    case AGL_NODE_CONTINUE_STMT:
         /* Valid only inside loops; we defer that check for now */
         break;
 
-    case AGO_NODE_BLOCK:
+    case AGL_NODE_BLOCK:
         scope_push(sema);
         for (int i = 0; i < node->as.block.stmt_count; i++) {
             check_stmt(sema, node->as.block.stmts[i]);
-            if (ago_error_occurred(sema->ctx)) break;
+            if (agl_error_occurred(sema->ctx)) break;
         }
         scope_pop(sema);
         break;
 
-    case AGO_NODE_FN_DECL:
+    case AGL_NODE_FN_DECL:
         /* Register function in current scope before checking body */
         scope_define(sema->scope,
                      node->as.fn_decl.name,
@@ -324,10 +324,10 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
         scope_pop(sema);
         break;
 
-    case AGO_NODE_STRUCT_DECL:
+    case AGL_NODE_STRUCT_DECL:
         break;
 
-    case AGO_NODE_IMPORT:
+    case AGL_NODE_IMPORT:
         /* Import paths validated at runtime (file existence); sema accepts */
         break;
 
@@ -338,8 +338,8 @@ static void check_stmt(AgoSema *sema, AgoNode *node) {
 
 /* ---- Public API ---- */
 
-AgoSema *ago_sema_new(AgoCtx *ctx, AgoArena *arena) {
-    AgoSema *sema = calloc(1, sizeof(AgoSema));
+AglSema *agl_sema_new(AglCtx *ctx, AglArena *arena) {
+    AglSema *sema = calloc(1, sizeof(AglSema));
     if (!sema) return NULL;
     sema->ctx = ctx;
     sema->arena = arena;
@@ -347,12 +347,12 @@ AgoSema *ago_sema_new(AgoCtx *ctx, AgoArena *arena) {
     return sema;
 }
 
-void ago_sema_free(AgoSema *sema) {
+void agl_sema_free(AglSema *sema) {
     free(sema);
 }
 
-bool ago_sema_check(AgoSema *sema, AgoNode *program) {
-    if (!sema || !program || program->kind != AGO_NODE_PROGRAM) return false;
+bool agl_sema_check(AglSema *sema, AglNode *program) {
+    if (!sema || !program || program->kind != AGL_NODE_PROGRAM) return false;
 
     /* Create top-level scope with built-in functions */
     sema->scope = scope_new(sema, NULL);
@@ -409,7 +409,7 @@ bool ago_sema_check(AgoSema *sema, AgoNode *program) {
     /* Check all top-level declarations/statements */
     for (int i = 0; i < program->as.program.decl_count; i++) {
         check_stmt(sema, program->as.program.decls[i]);
-        if (ago_error_occurred(sema->ctx)) return false;
+        if (agl_error_occurred(sema->ctx)) return false;
     }
 
     return true;

@@ -6,15 +6,15 @@
 
 /* Run a compiled bytecode chunk (creates/destroys VM internally).
  * Returns 0 on success, -1 on error. */
-int ago_vm_run(AgoChunk *chunk, const char *filename, AgoCtx *ctx);
+int agl_vm_run(AglChunk *chunk, const char *filename, AglCtx *ctx);
 
 /* Compile AST and execute via VM.
- * Drop-in replacement for ago_interpret. */
-int ago_vm_interpret(AgoNode *program, const char *filename, AgoCtx *ctx);
+ * Drop-in replacement for agl_interpret. */
+int agl_vm_interpret(AglNode *program, const char *filename, AglCtx *ctx);
 
 /* VM-based REPL with persistent state */
-typedef struct AgoVmRepl AgoVmRepl;
+typedef struct AglVmRepl AglVmRepl;
 
-AgoVmRepl *ago_vm_repl_new(void);
-void ago_vm_repl_free(AgoVmRepl *repl);
-int ago_vm_repl_exec(AgoVmRepl *repl, const char *source);
+AglVmRepl *agl_vm_repl_new(void);
+void agl_vm_repl_free(AglVmRepl *repl);
+int agl_vm_repl_exec(AglVmRepl *repl, const char *source);

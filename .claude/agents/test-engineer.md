@@ -1,10 +1,10 @@
 # Test Engineer Agent
 
-You are a testing specialist for the Ago programming language project. Your job is to ensure every component of the Ago compiler/interpreter is thoroughly tested and reliable.
+You are a testing specialist for the Agl programming language project. Your job is to ensure every component of the Agl compiler/interpreter is thoroughly tested and reliable.
 
 ## Project Context
 
-Ago is a medium-level programming language written in C11. See `CLAUDE.md` for build conventions and `.claude/agents/lang-architect.md` for language specifications.
+Agl is a medium-level programming language written in C11. See `CLAUDE.md` for build conventions and `.claude/agents/lang-architect.md` for language specifications.
 
 ## Testing Philosophy
 
@@ -23,11 +23,11 @@ The test framework uses an explicit context struct (no global state) in `tests/t
 typedef struct {
     int passes;
     int failures;
-} AgoTestCtx;
+} AglTestCtx;
 
-#define AGO_TEST(name) static void name(AgoTestCtx *ctx)
+#define AGL_TEST(name) static void name(AglTestCtx *ctx)
 
-#define AGO_ASSERT(ctx, cond) do { \
+#define AGL_ASSERT(ctx, cond) do { \
     if (!(cond)) { \
         printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, #cond); \
         (ctx)->failures++; \
@@ -36,7 +36,7 @@ typedef struct {
     } \
 } while(0)
 
-#define AGO_ASSERT_FATAL(ctx, cond) do { \
+#define AGL_ASSERT_FATAL(ctx, cond) do { \
     if (!(cond)) { \
         printf("[FAIL] %s:%d: %s (fatal)\n", __FILE__, __LINE__, #cond); \
         (ctx)->failures++; \
@@ -46,7 +46,7 @@ typedef struct {
     } \
 } while(0)
 
-#define AGO_ASSERT_STR_EQ(ctx, a, b) do { \
+#define AGL_ASSERT_STR_EQ(ctx, a, b) do { \
     if (strcmp((a), (b)) != 0) { \
         printf("[FAIL] %s:%d: \"%s\" != \"%s\"\n", __FILE__, __LINE__, (a), (b)); \
         (ctx)->failures++; \
@@ -55,7 +55,7 @@ typedef struct {
     } \
 } while(0)
 
-#define AGO_ASSERT_INT_EQ(ctx, a, b) do { \
+#define AGL_ASSERT_INT_EQ(ctx, a, b) do { \
     if ((a) != (b)) { \
         printf("[FAIL] %s:%d: %d != %d\n", __FILE__, __LINE__, (a), (b)); \
         (ctx)->failures++; \
@@ -64,22 +64,22 @@ typedef struct {
     } \
 } while(0)
 
-#define AGO_RUN_TEST(ctx, name) do { \
+#define AGL_RUN_TEST(ctx, name) do { \
     name(ctx); \
     if ((ctx)->failures == 0) printf("[PASS] %s\n", #name); \
 } while(0)
 
-#define AGO_SUMMARY(ctx) do { \
+#define AGL_SUMMARY(ctx) do { \
     printf("\n%d passed, %d failed\n", (ctx)->passes, (ctx)->failures); \
     return (ctx)->failures > 0 ? 1 : 0; \
 } while(0)
 ```
 
 Key design decisions:
-- `AgoTestCtx` passed explicitly — no global state, enables test isolation
-- `AGO_ASSERT_FATAL` returns from the test function on failure (use for NULL checks before dereference)
+- `AglTestCtx` passed explicitly — no global state, enables test isolation
+- `AGL_ASSERT_FATAL` returns from the test function on failure (use for NULL checks before dereference)
 - Output: `[PASS]`/`[FAIL]` prefix for easy grep in CI
-- `AGO_SUMMARY` returns exit code 1 on any failure
+- `AGL_SUMMARY` returns exit code 1 on any failure
 
 ## Testing Strategy by Module
 
@@ -113,7 +113,7 @@ Key design decisions:
 
 ### Integration Tests (`tests/test_integration.c`)
 - End-to-end: source string → expected output
-- Use `.ago` files from `examples/` as integration test inputs
+- Use `.agl` files from `examples/` as integration test inputs
 - Error programs: verify that invalid programs produce expected error messages
 
 ## Your Role

@@ -3,75 +3,75 @@
 
 /* ---- Basic lifecycle ---- */
 
-AGO_TEST(test_gc_new_free) {
-    AgoGc *gc = ago_gc_new();
-    AGO_ASSERT(ctx, gc != NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 0);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_new_free) {
+    AglGc *gc = agl_gc_new();
+    AGL_ASSERT(ctx, gc != NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 0);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_alloc_one) {
-    AgoGc *gc = ago_gc_new();
-    void *obj = ago_gc_alloc(gc, sizeof(AgoObj) + 64, NULL);
-    AGO_ASSERT(ctx, obj != NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 1);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_alloc_one) {
+    AglGc *gc = agl_gc_new();
+    void *obj = agl_gc_alloc(gc, sizeof(AglObj) + 64, NULL);
+    AGL_ASSERT(ctx, obj != NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 1);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_alloc_multiple) {
-    AgoGc *gc = ago_gc_new();
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 3);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_alloc_multiple) {
+    AglGc *gc = agl_gc_new();
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 3);
+    agl_gc_free(gc);
 }
 
 /* ---- Sweep ---- */
 
-AGO_TEST(test_gc_sweep_all_unmarked) {
-    AgoGc *gc = ago_gc_new();
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 2);
-    ago_gc_sweep(gc);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 0);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_sweep_all_unmarked) {
+    AglGc *gc = agl_gc_new();
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 2);
+    agl_gc_sweep(gc);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 0);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_sweep_keeps_marked) {
-    AgoGc *gc = ago_gc_new();
-    AgoObj *obj1 = ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 2);
-    ago_gc_mark(obj1);
-    ago_gc_sweep(gc);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 1);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_sweep_keeps_marked) {
+    AglGc *gc = agl_gc_new();
+    AglObj *obj1 = agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 2);
+    agl_gc_mark(obj1);
+    agl_gc_sweep(gc);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 1);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_sweep_resets_marks) {
-    AgoGc *gc = ago_gc_new();
-    AgoObj *obj = ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_mark(obj);
-    AGO_ASSERT(ctx, obj->marked);
-    ago_gc_sweep(gc);
-    AGO_ASSERT(ctx, !obj->marked);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_sweep_resets_marks) {
+    AglGc *gc = agl_gc_new();
+    AglObj *obj = agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_mark(obj);
+    AGL_ASSERT(ctx, obj->marked);
+    agl_gc_sweep(gc);
+    AGL_ASSERT(ctx, !obj->marked);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_sweep_partial) {
-    AgoGc *gc = ago_gc_new();
-    AgoObj *a = ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    AgoObj *c = ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, NULL);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 4);
-    ago_gc_mark(a);
-    ago_gc_mark(c);
-    ago_gc_sweep(gc);
-    AGO_ASSERT_INT_EQ(ctx, ago_gc_object_count(gc), 2);
-    ago_gc_free(gc);
+AGL_TEST(test_gc_sweep_partial) {
+    AglGc *gc = agl_gc_new();
+    AglObj *a = agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    AglObj *c = agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, NULL);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 4);
+    agl_gc_mark(a);
+    agl_gc_mark(c);
+    agl_gc_sweep(gc);
+    AGL_ASSERT_INT_EQ(ctx, agl_gc_object_count(gc), 2);
+    agl_gc_free(gc);
 }
 
 /* ---- Cleanup callback ---- */
@@ -79,79 +79,79 @@ AGO_TEST(test_gc_sweep_partial) {
 static int cleanup_count = 0;
 static void test_cleanup(void *obj) { (void)obj; cleanup_count++; }
 
-AGO_TEST(test_gc_cleanup_on_sweep) {
+AGL_TEST(test_gc_cleanup_on_sweep) {
     cleanup_count = 0;
-    AgoGc *gc = ago_gc_new();
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_sweep(gc);
-    AGO_ASSERT_INT_EQ(ctx, cleanup_count, 2);
-    ago_gc_free(gc);
+    AglGc *gc = agl_gc_new();
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_sweep(gc);
+    AGL_ASSERT_INT_EQ(ctx, cleanup_count, 2);
+    agl_gc_free(gc);
 }
 
-AGO_TEST(test_gc_cleanup_on_free) {
+AGL_TEST(test_gc_cleanup_on_free) {
     cleanup_count = 0;
-    AgoGc *gc = ago_gc_new();
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_free(gc);
-    AGO_ASSERT_INT_EQ(ctx, cleanup_count, 2);
+    AglGc *gc = agl_gc_new();
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_free(gc);
+    AGL_ASSERT_INT_EQ(ctx, cleanup_count, 2);
 }
 
-AGO_TEST(test_gc_cleanup_skipped_for_marked) {
+AGL_TEST(test_gc_cleanup_skipped_for_marked) {
     cleanup_count = 0;
-    AgoGc *gc = ago_gc_new();
-    AgoObj *obj = ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_alloc(gc, sizeof(AgoObj) + 32, test_cleanup);
-    ago_gc_mark(obj);
-    ago_gc_sweep(gc);
-    AGO_ASSERT_INT_EQ(ctx, cleanup_count, 1);
-    ago_gc_free(gc);
+    AglGc *gc = agl_gc_new();
+    AglObj *obj = agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_alloc(gc, sizeof(AglObj) + 32, test_cleanup);
+    agl_gc_mark(obj);
+    agl_gc_sweep(gc);
+    AGL_ASSERT_INT_EQ(ctx, cleanup_count, 1);
+    agl_gc_free(gc);
 }
 
 /* ---- Threshold ---- */
 
-AGO_TEST(test_gc_should_collect) {
-    AgoGc *gc = ago_gc_new();
-    AGO_ASSERT(ctx, !ago_gc_should_collect(gc));
+AGL_TEST(test_gc_should_collect) {
+    AglGc *gc = agl_gc_new();
+    AGL_ASSERT(ctx, !agl_gc_should_collect(gc));
     /* Allocate past threshold */
-    while (!ago_gc_should_collect(gc)) {
-        ago_gc_alloc(gc, 1024, NULL);
+    while (!agl_gc_should_collect(gc)) {
+        agl_gc_alloc(gc, 1024, NULL);
     }
-    AGO_ASSERT(ctx, ago_gc_should_collect(gc));
-    ago_gc_free(gc);
+    AGL_ASSERT(ctx, agl_gc_should_collect(gc));
+    agl_gc_free(gc);
 }
 
 /* ---- Mark null safety ---- */
 
-AGO_TEST(test_gc_mark_null) {
+AGL_TEST(test_gc_mark_null) {
     /* Should not crash */
-    ago_gc_mark(NULL);
-    AGO_ASSERT(ctx, true);
+    agl_gc_mark(NULL);
+    AGL_ASSERT(ctx, true);
 }
 
 /* ---- Main ---- */
 
 int main(void) {
-    AgoTestCtx ctx = {0, 0};
+    AglTestCtx ctx = {0, 0};
 
     printf("=== GC Tests ===\n");
 
-    AGO_RUN_TEST(&ctx, test_gc_new_free);
-    AGO_RUN_TEST(&ctx, test_gc_alloc_one);
-    AGO_RUN_TEST(&ctx, test_gc_alloc_multiple);
+    AGL_RUN_TEST(&ctx, test_gc_new_free);
+    AGL_RUN_TEST(&ctx, test_gc_alloc_one);
+    AGL_RUN_TEST(&ctx, test_gc_alloc_multiple);
 
-    AGO_RUN_TEST(&ctx, test_gc_sweep_all_unmarked);
-    AGO_RUN_TEST(&ctx, test_gc_sweep_keeps_marked);
-    AGO_RUN_TEST(&ctx, test_gc_sweep_resets_marks);
-    AGO_RUN_TEST(&ctx, test_gc_sweep_partial);
+    AGL_RUN_TEST(&ctx, test_gc_sweep_all_unmarked);
+    AGL_RUN_TEST(&ctx, test_gc_sweep_keeps_marked);
+    AGL_RUN_TEST(&ctx, test_gc_sweep_resets_marks);
+    AGL_RUN_TEST(&ctx, test_gc_sweep_partial);
 
-    AGO_RUN_TEST(&ctx, test_gc_cleanup_on_sweep);
-    AGO_RUN_TEST(&ctx, test_gc_cleanup_on_free);
-    AGO_RUN_TEST(&ctx, test_gc_cleanup_skipped_for_marked);
+    AGL_RUN_TEST(&ctx, test_gc_cleanup_on_sweep);
+    AGL_RUN_TEST(&ctx, test_gc_cleanup_on_free);
+    AGL_RUN_TEST(&ctx, test_gc_cleanup_skipped_for_marked);
 
-    AGO_RUN_TEST(&ctx, test_gc_should_collect);
-    AGO_RUN_TEST(&ctx, test_gc_mark_null);
+    AGL_RUN_TEST(&ctx, test_gc_should_collect);
+    AGL_RUN_TEST(&ctx, test_gc_mark_null);
 
-    AGO_SUMMARY(&ctx);
+    AGL_SUMMARY(&ctx);
 }

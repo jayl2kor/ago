@@ -9,7 +9,7 @@
 
 1. **클린 빌드**: `make clean && make` 실행. 컴파일 경고가 있으면 모두 표시.
 2. **테스트**: `make test` 실행. 실패 시 상세 내용 표시하고 중단.
-3. **예제 실행**: `examples/` 디렉토리의 모든 `.ago` 파일을 실행하여 정상 동작 확인.
+3. **예제 실행**: `examples/` 디렉토리의 모든 `.agl` 파일을 실행하여 정상 동작 확인.
 4. **메모리 검사**: AddressSanitizer + UndefinedBehaviorSanitizer로 검증. `make test`가 이미 `-fsanitize=address,undefined` 플래그로 빌드되므로 테스트 실행 시 자동으로 메모리 오류 감지. ASan 에러 출력이 있으면 상세 표시.
 5. **결과 요약**:
    ```

@@ -5,12 +5,12 @@
 /* ---- Interactive REPL ---- */
 
 static int run_repl(void) {
-    printf("ago %s — interactive REPL\n", AGO_VERSION);
+    printf("agl %s — interactive REPL\n", AGL_VERSION);
     printf("Type expressions or statements. Ctrl+D to exit.\n\n");
 
-    AgoRepl *repl = ago_repl_new();
+    AglRepl *repl = agl_repl_new();
     if (!repl) {
-        fprintf(stderr, "ago: failed to initialize REPL\n");
+        fprintf(stderr, "agl: failed to initialize REPL\n");
         return 1;
     }
 
@@ -21,7 +21,7 @@ static int run_repl(void) {
 
     for (;;) {
         /* Print prompt */
-        printf("%s", brace_depth > 0 ? "...> " : "ago> ");
+        printf("%s", brace_depth > 0 ? "...> " : "agl> ");
         fflush(stdout);
 
         if (!fgets(line, (int)sizeof(line), stdin)) {
@@ -29,7 +29,7 @@ static int run_repl(void) {
             if (buf_len > 0) {
                 /* Execute any pending input */
                 buf[buf_len] = '\0';
-                ago_repl_exec(repl, buf);
+                agl_repl_exec(repl, buf);
             }
             printf("\n");
             break;
@@ -51,12 +51,12 @@ static int run_repl(void) {
         /* Execute when braces are balanced */
         if (brace_depth == 0 && buf_len > 0) {
             buf[buf_len] = '\0';
-            ago_repl_exec(repl, buf);
+            agl_repl_exec(repl, buf);
             buf_len = 0;
         }
     }
 
-    ago_repl_free(repl);
+    agl_repl_free(repl);
     return 0;
 }
 
@@ -65,13 +65,13 @@ static int run_repl(void) {
 static int run_file(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) {
-        fprintf(stderr, "ago: cannot open '%s'\n", path);
+        fprintf(stderr, "agl: cannot open '%s'\n", path);
         return 1;
     }
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
     if (len < 0) {
-        fprintf(stderr, "ago: cannot read '%s'\n", path);
+        fprintf(stderr, "agl: cannot read '%s'\n", path);
         fclose(f);
         return 1;
     }
@@ -82,17 +82,17 @@ static int run_file(const char *path) {
     source[read_len] = '\0';
     fclose(f);
 
-    AgoCtx *ctx = ago_ctx_new();
+    AglCtx *ctx = agl_ctx_new();
     if (!ctx) { free(source); return 1; }
 
-    int result = ago_run(source, path, ctx);
+    int result = agl_run(source, path, ctx);
 
-    if (ago_error_occurred(ctx)) {
-        ago_error_print(ago_error_get(ctx));
+    if (agl_error_occurred(ctx)) {
+        agl_error_print(agl_error_get(ctx));
         result = 1;
     }
 
-    ago_ctx_free(ctx);
+    agl_ctx_free(ctx);
     free(source);
     return result;
 }

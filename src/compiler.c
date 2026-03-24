@@ -4,99 +4,99 @@
 /* ---- Builtin name-to-ID mapping ---- */
 
 typedef enum {
-    AGO_BUILTIN_PRINT,
-    AGO_BUILTIN_LEN,
-    AGO_BUILTIN_TYPE,
-    AGO_BUILTIN_STR,
-    AGO_BUILTIN_INT,
-    AGO_BUILTIN_FLOAT,
-    AGO_BUILTIN_PUSH,
-    AGO_BUILTIN_MAP,
-    AGO_BUILTIN_FILTER,
-    AGO_BUILTIN_ABS,
-    AGO_BUILTIN_MIN,
-    AGO_BUILTIN_MAX,
-    AGO_BUILTIN_READ_FILE,
-    AGO_BUILTIN_WRITE_FILE,
-    AGO_BUILTIN_FILE_EXISTS,
+    AGL_BUILTIN_PRINT,
+    AGL_BUILTIN_LEN,
+    AGL_BUILTIN_TYPE,
+    AGL_BUILTIN_STR,
+    AGL_BUILTIN_INT,
+    AGL_BUILTIN_FLOAT,
+    AGL_BUILTIN_PUSH,
+    AGL_BUILTIN_MAP,
+    AGL_BUILTIN_FILTER,
+    AGL_BUILTIN_ABS,
+    AGL_BUILTIN_MIN,
+    AGL_BUILTIN_MAX,
+    AGL_BUILTIN_READ_FILE,
+    AGL_BUILTIN_WRITE_FILE,
+    AGL_BUILTIN_FILE_EXISTS,
     /* Map builtins */
-    AGO_BUILTIN_MAP_GET,
-    AGO_BUILTIN_MAP_SET,
-    AGO_BUILTIN_MAP_KEYS,
-    AGO_BUILTIN_MAP_HAS,
-    AGO_BUILTIN_MAP_DEL,
+    AGL_BUILTIN_MAP_GET,
+    AGL_BUILTIN_MAP_SET,
+    AGL_BUILTIN_MAP_KEYS,
+    AGL_BUILTIN_MAP_HAS,
+    AGL_BUILTIN_MAP_DEL,
     /* String builtins */
-    AGO_BUILTIN_SPLIT,
-    AGO_BUILTIN_TRIM,
-    AGO_BUILTIN_CONTAINS,
-    AGO_BUILTIN_REPLACE,
-    AGO_BUILTIN_STARTS_WITH,
-    AGO_BUILTIN_ENDS_WITH,
-    AGO_BUILTIN_TO_UPPER,
-    AGO_BUILTIN_TO_LOWER,
-    AGO_BUILTIN_JOIN,
-    AGO_BUILTIN_SUBSTR,
-    AGO_BUILTIN_COUNT,
+    AGL_BUILTIN_SPLIT,
+    AGL_BUILTIN_TRIM,
+    AGL_BUILTIN_CONTAINS,
+    AGL_BUILTIN_REPLACE,
+    AGL_BUILTIN_STARTS_WITH,
+    AGL_BUILTIN_ENDS_WITH,
+    AGL_BUILTIN_TO_UPPER,
+    AGL_BUILTIN_TO_LOWER,
+    AGL_BUILTIN_JOIN,
+    AGL_BUILTIN_SUBSTR,
+    AGL_BUILTIN_COUNT,
     /* JSON builtins */
-    AGO_BUILTIN_JSON_PARSE,
-    AGO_BUILTIN_JSON_STRINGIFY,
+    AGL_BUILTIN_JSON_PARSE,
+    AGL_BUILTIN_JSON_STRINGIFY,
     /* Environment variable builtins */
-    AGO_BUILTIN_ENV,
-    AGO_BUILTIN_ENV_DEFAULT,
+    AGL_BUILTIN_ENV,
+    AGL_BUILTIN_ENV_DEFAULT,
     /* HTTP builtins */
-    AGO_BUILTIN_HTTP_GET,
-    AGO_BUILTIN_HTTP_POST,
+    AGL_BUILTIN_HTTP_GET,
+    AGL_BUILTIN_HTTP_POST,
     /* Process execution */
-    AGO_BUILTIN_EXEC,
+    AGL_BUILTIN_EXEC,
     /* Time functions */
-    AGO_BUILTIN_NOW,
-    AGO_BUILTIN_SLEEP,
-    AGO_BUILTIN_NONE = -1,
-} AgoBuiltinId;
+    AGL_BUILTIN_NOW,
+    AGL_BUILTIN_SLEEP,
+    AGL_BUILTIN_NONE = -1,
+} AglBuiltinId;
 
-static AgoBuiltinId resolve_builtin(const char *name, int len) {
-    if (ago_str_eq(name, len, "print", 5)) return AGO_BUILTIN_PRINT;
-    if (ago_str_eq(name, len, "len", 3)) return AGO_BUILTIN_LEN;
-    if (ago_str_eq(name, len, "type", 4)) return AGO_BUILTIN_TYPE;
-    if (ago_str_eq(name, len, "str", 3)) return AGO_BUILTIN_STR;
-    if (ago_str_eq(name, len, "int", 3)) return AGO_BUILTIN_INT;
-    if (ago_str_eq(name, len, "float", 5)) return AGO_BUILTIN_FLOAT;
-    if (ago_str_eq(name, len, "push", 4)) return AGO_BUILTIN_PUSH;
-    if (ago_str_eq(name, len, "map", 3)) return AGO_BUILTIN_MAP;
-    if (ago_str_eq(name, len, "filter", 6)) return AGO_BUILTIN_FILTER;
-    if (ago_str_eq(name, len, "abs", 3)) return AGO_BUILTIN_ABS;
-    if (ago_str_eq(name, len, "min", 3)) return AGO_BUILTIN_MIN;
-    if (ago_str_eq(name, len, "max", 3)) return AGO_BUILTIN_MAX;
-    if (ago_str_eq(name, len, "read_file", 9)) return AGO_BUILTIN_READ_FILE;
-    if (ago_str_eq(name, len, "write_file", 10)) return AGO_BUILTIN_WRITE_FILE;
-    if (ago_str_eq(name, len, "file_exists", 11)) return AGO_BUILTIN_FILE_EXISTS;
-    if (ago_str_eq(name, len, "map_get", 7)) return AGO_BUILTIN_MAP_GET;
-    if (ago_str_eq(name, len, "map_set", 7)) return AGO_BUILTIN_MAP_SET;
-    if (ago_str_eq(name, len, "map_keys", 8)) return AGO_BUILTIN_MAP_KEYS;
-    if (ago_str_eq(name, len, "map_has", 7)) return AGO_BUILTIN_MAP_HAS;
-    if (ago_str_eq(name, len, "map_del", 7)) return AGO_BUILTIN_MAP_DEL;
-    if (ago_str_eq(name, len, "split", 5)) return AGO_BUILTIN_SPLIT;
-    if (ago_str_eq(name, len, "trim", 4)) return AGO_BUILTIN_TRIM;
-    if (ago_str_eq(name, len, "contains", 8)) return AGO_BUILTIN_CONTAINS;
-    if (ago_str_eq(name, len, "replace", 7)) return AGO_BUILTIN_REPLACE;
-    if (ago_str_eq(name, len, "starts_with", 11)) return AGO_BUILTIN_STARTS_WITH;
-    if (ago_str_eq(name, len, "ends_with", 9)) return AGO_BUILTIN_ENDS_WITH;
-    if (ago_str_eq(name, len, "to_upper", 8)) return AGO_BUILTIN_TO_UPPER;
-    if (ago_str_eq(name, len, "to_lower", 8)) return AGO_BUILTIN_TO_LOWER;
-    if (ago_str_eq(name, len, "join", 4)) return AGO_BUILTIN_JOIN;
-    if (ago_str_eq(name, len, "substr", 6)) return AGO_BUILTIN_SUBSTR;
-    if (ago_str_eq(name, len, "json_parse", 10)) return AGO_BUILTIN_JSON_PARSE;
-    if (ago_str_eq(name, len, "json_stringify", 14)) return AGO_BUILTIN_JSON_STRINGIFY;
-    if (ago_str_eq(name, len, "env", 3)) return AGO_BUILTIN_ENV;
-    if (ago_str_eq(name, len, "env_default", 11)) return AGO_BUILTIN_ENV_DEFAULT;
-    if (ago_str_eq(name, len, "http_get", 8)) return AGO_BUILTIN_HTTP_GET;
-    if (ago_str_eq(name, len, "http_post", 9)) return AGO_BUILTIN_HTTP_POST;
-    if (ago_str_eq(name, len, "exec", 4)) return AGO_BUILTIN_EXEC;
-    if (ago_str_eq(name, len, "now", 3)) return AGO_BUILTIN_NOW;
-    if (ago_str_eq(name, len, "sleep", 5)) return AGO_BUILTIN_SLEEP;
-    if (ago_str_eq(name, len, "ok", 2)) return AGO_BUILTIN_NONE;
-    if (ago_str_eq(name, len, "err", 3)) return AGO_BUILTIN_NONE;
-    return AGO_BUILTIN_NONE;
+static AglBuiltinId resolve_builtin(const char *name, int len) {
+    if (agl_str_eq(name, len, "print", 5)) return AGL_BUILTIN_PRINT;
+    if (agl_str_eq(name, len, "len", 3)) return AGL_BUILTIN_LEN;
+    if (agl_str_eq(name, len, "type", 4)) return AGL_BUILTIN_TYPE;
+    if (agl_str_eq(name, len, "str", 3)) return AGL_BUILTIN_STR;
+    if (agl_str_eq(name, len, "int", 3)) return AGL_BUILTIN_INT;
+    if (agl_str_eq(name, len, "float", 5)) return AGL_BUILTIN_FLOAT;
+    if (agl_str_eq(name, len, "push", 4)) return AGL_BUILTIN_PUSH;
+    if (agl_str_eq(name, len, "map", 3)) return AGL_BUILTIN_MAP;
+    if (agl_str_eq(name, len, "filter", 6)) return AGL_BUILTIN_FILTER;
+    if (agl_str_eq(name, len, "abs", 3)) return AGL_BUILTIN_ABS;
+    if (agl_str_eq(name, len, "min", 3)) return AGL_BUILTIN_MIN;
+    if (agl_str_eq(name, len, "max", 3)) return AGL_BUILTIN_MAX;
+    if (agl_str_eq(name, len, "read_file", 9)) return AGL_BUILTIN_READ_FILE;
+    if (agl_str_eq(name, len, "write_file", 10)) return AGL_BUILTIN_WRITE_FILE;
+    if (agl_str_eq(name, len, "file_exists", 11)) return AGL_BUILTIN_FILE_EXISTS;
+    if (agl_str_eq(name, len, "map_get", 7)) return AGL_BUILTIN_MAP_GET;
+    if (agl_str_eq(name, len, "map_set", 7)) return AGL_BUILTIN_MAP_SET;
+    if (agl_str_eq(name, len, "map_keys", 8)) return AGL_BUILTIN_MAP_KEYS;
+    if (agl_str_eq(name, len, "map_has", 7)) return AGL_BUILTIN_MAP_HAS;
+    if (agl_str_eq(name, len, "map_del", 7)) return AGL_BUILTIN_MAP_DEL;
+    if (agl_str_eq(name, len, "split", 5)) return AGL_BUILTIN_SPLIT;
+    if (agl_str_eq(name, len, "trim", 4)) return AGL_BUILTIN_TRIM;
+    if (agl_str_eq(name, len, "contains", 8)) return AGL_BUILTIN_CONTAINS;
+    if (agl_str_eq(name, len, "replace", 7)) return AGL_BUILTIN_REPLACE;
+    if (agl_str_eq(name, len, "starts_with", 11)) return AGL_BUILTIN_STARTS_WITH;
+    if (agl_str_eq(name, len, "ends_with", 9)) return AGL_BUILTIN_ENDS_WITH;
+    if (agl_str_eq(name, len, "to_upper", 8)) return AGL_BUILTIN_TO_UPPER;
+    if (agl_str_eq(name, len, "to_lower", 8)) return AGL_BUILTIN_TO_LOWER;
+    if (agl_str_eq(name, len, "join", 4)) return AGL_BUILTIN_JOIN;
+    if (agl_str_eq(name, len, "substr", 6)) return AGL_BUILTIN_SUBSTR;
+    if (agl_str_eq(name, len, "json_parse", 10)) return AGL_BUILTIN_JSON_PARSE;
+    if (agl_str_eq(name, len, "json_stringify", 14)) return AGL_BUILTIN_JSON_STRINGIFY;
+    if (agl_str_eq(name, len, "env", 3)) return AGL_BUILTIN_ENV;
+    if (agl_str_eq(name, len, "env_default", 11)) return AGL_BUILTIN_ENV_DEFAULT;
+    if (agl_str_eq(name, len, "http_get", 8)) return AGL_BUILTIN_HTTP_GET;
+    if (agl_str_eq(name, len, "http_post", 9)) return AGL_BUILTIN_HTTP_POST;
+    if (agl_str_eq(name, len, "exec", 4)) return AGL_BUILTIN_EXEC;
+    if (agl_str_eq(name, len, "now", 3)) return AGL_BUILTIN_NOW;
+    if (agl_str_eq(name, len, "sleep", 5)) return AGL_BUILTIN_SLEEP;
+    if (agl_str_eq(name, len, "ok", 2)) return AGL_BUILTIN_NONE;
+    if (agl_str_eq(name, len, "err", 3)) return AGL_BUILTIN_NONE;
+    return AGL_BUILTIN_NONE;
 }
 
 /* ---- Loop context for break/continue ---- */
@@ -115,42 +115,42 @@ typedef struct {
 /* ---- Compiler state ---- */
 
 typedef struct {
-    AgoChunk *chunk;
-    AgoCtx *ctx;
-    AgoArena *arena;
-    AgoGc *gc;
+    AglChunk *chunk;
+    AglCtx *ctx;
+    AglArena *arena;
+    AglGc *gc;
     int scope_depth;        /* for tracking block-local var counts */
     int block_var_count;    /* vars defined in current block scope */
     LoopCtx loop_stack[MAX_LOOP_DEPTH];
     int loop_depth;
 } Compiler;
 
-static void compile_expr(Compiler *c, AgoNode *node);
-static void compile_stmt(Compiler *c, AgoNode *node);
+static void compile_expr(Compiler *c, AglNode *node);
+static void compile_stmt(Compiler *c, AglNode *node);
 
 /* ---- Helpers ---- */
 
 static void emit(Compiler *c, uint8_t byte) {
-    ago_chunk_write(c->chunk, byte);
+    agl_chunk_write(c->chunk, byte);
 }
 
 static void emit_u16(Compiler *c, uint16_t val) {
-    ago_chunk_write_u16(c->chunk, val);
+    agl_chunk_write_u16(c->chunk, val);
 }
 
-static int add_const(Compiler *c, AgoVal val) {
-    return ago_chunk_add_const(c->chunk, val);
+static int add_const(Compiler *c, AglVal val) {
+    return agl_chunk_add_const(c->chunk, val);
 }
 
-static int emit_const(Compiler *c, AgoVal val) {
+static int emit_const(Compiler *c, AglVal val) {
     int idx = add_const(c, val);
-    emit(c, AGO_OP_CONST);
+    emit(c, AGL_OP_CONST);
     emit_u16(c, (uint16_t)idx);
     return idx;
 }
 
 static int add_string_const(Compiler *c, const char *s, int len) {
-    AgoVal v;
+    AglVal v;
     v.kind = VAL_STRING;
     v.as.string.data = s;
     v.as.string.length = len;
@@ -158,76 +158,76 @@ static int add_string_const(Compiler *c, const char *s, int len) {
 }
 
 static void emit_line(Compiler *c, int line) {
-    emit(c, AGO_OP_LINE);
+    emit(c, AGL_OP_LINE);
     emit_u16(c, (uint16_t)line);
 }
 
 /* ---- Expression compilation ---- */
 
-static void compile_expr(Compiler *c, AgoNode *node) {
-    if (!node || ago_error_occurred(c->ctx)) return;
+static void compile_expr(Compiler *c, AglNode *node) {
+    if (!node || agl_error_occurred(c->ctx)) return;
 
     switch (node->kind) {
-    case AGO_NODE_INT_LIT:
-        emit_const(c, (AgoVal){VAL_INT, {.integer = node->as.int_lit.value}});
+    case AGL_NODE_INT_LIT:
+        emit_const(c, (AglVal){VAL_INT, {.integer = node->as.int_lit.value}});
         break;
 
-    case AGO_NODE_FLOAT_LIT:
-        emit_const(c, (AgoVal){VAL_FLOAT, {.floating = node->as.float_lit.value}});
+    case AGL_NODE_FLOAT_LIT:
+        emit_const(c, (AglVal){VAL_FLOAT, {.floating = node->as.float_lit.value}});
         break;
 
-    case AGO_NODE_STRING_LIT:
-        emit_const(c, (AgoVal){VAL_STRING, {.string = {node->as.string_lit.value,
+    case AGL_NODE_STRING_LIT:
+        emit_const(c, (AglVal){VAL_STRING, {.string = {node->as.string_lit.value,
                                                         node->as.string_lit.length}}});
         break;
 
-    case AGO_NODE_BOOL_LIT:
-        emit(c, node->as.bool_lit.value ? AGO_OP_TRUE : AGO_OP_FALSE);
+    case AGL_NODE_BOOL_LIT:
+        emit(c, node->as.bool_lit.value ? AGL_OP_TRUE : AGL_OP_FALSE);
         break;
 
-    case AGO_NODE_IDENT: {
+    case AGL_NODE_IDENT: {
         int idx = add_string_const(c, node->as.ident.name, node->as.ident.length);
-        emit(c, AGO_OP_GET_VAR);
+        emit(c, AGL_OP_GET_VAR);
         emit_u16(c, (uint16_t)idx);
         break;
     }
 
-    case AGO_NODE_UNARY:
+    case AGL_NODE_UNARY:
         compile_expr(c, node->as.unary.operand);
-        if (node->as.unary.op == AGO_TOKEN_MINUS) emit(c, AGO_OP_NEGATE);
-        else if (node->as.unary.op == AGO_TOKEN_NOT) emit(c, AGO_OP_NOT);
+        if (node->as.unary.op == AGL_TOKEN_MINUS) emit(c, AGL_OP_NEGATE);
+        else if (node->as.unary.op == AGL_TOKEN_NOT) emit(c, AGL_OP_NOT);
         break;
 
-    case AGO_NODE_BINARY: {
-        AgoTokenKind op = node->as.binary.op;
+    case AGL_NODE_BINARY: {
+        AglTokenKind op = node->as.binary.op;
 
         /* Field access: right side is a name, not an expression */
-        if (op == AGO_TOKEN_DOT) {
+        if (op == AGL_TOKEN_DOT) {
             compile_expr(c, node->as.binary.left);
-            AgoNode *field = node->as.binary.right;
+            AglNode *field = node->as.binary.right;
             int idx = add_string_const(c, field->as.ident.name, field->as.ident.length);
-            emit(c, AGO_OP_GET_FIELD);
+            emit(c, AGL_OP_GET_FIELD);
             emit_u16(c, (uint16_t)idx);
             break;
         }
 
         /* Short-circuit && */
-        if (op == AGO_TOKEN_AND) {
+        if (op == AGL_TOKEN_AND) {
             compile_expr(c, node->as.binary.left);
-            int jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP_IF_FALSE);
-            emit(c, AGO_OP_POP);
+            int jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP_IF_FALSE);
+            emit(c, AGL_OP_POP);
             compile_expr(c, node->as.binary.right);
-            ago_chunk_patch_jump(c->chunk, jump);
+            agl_chunk_patch_jump(c->chunk, jump);
             break;
         }
 
         /* Short-circuit || */
-        if (op == AGO_TOKEN_OR) {
+        if (op == AGL_TOKEN_OR) {
             compile_expr(c, node->as.binary.left);
-            int jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP_IF_TRUE);
-            emit(c, AGO_OP_POP);
+            int jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP_IF_TRUE);
+            emit(c, AGL_OP_POP);
             compile_expr(c, node->as.binary.right);
-            ago_chunk_patch_jump(c->chunk, jump);
+            agl_chunk_patch_jump(c->chunk, jump);
             break;
         }
 
@@ -235,38 +235,38 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         compile_expr(c, node->as.binary.right);
 
         switch (op) {
-        case AGO_TOKEN_PLUS:    emit(c, AGO_OP_ADD); break;
-        case AGO_TOKEN_MINUS:   emit(c, AGO_OP_SUB); break;
-        case AGO_TOKEN_STAR:    emit(c, AGO_OP_MUL); break;
-        case AGO_TOKEN_SLASH:   emit(c, AGO_OP_DIV); break;
-        case AGO_TOKEN_PERCENT: emit(c, AGO_OP_MOD); break;
-        case AGO_TOKEN_EQ:      emit(c, AGO_OP_EQ); break;
-        case AGO_TOKEN_NEQ:     emit(c, AGO_OP_NEQ); break;
-        case AGO_TOKEN_LT:      emit(c, AGO_OP_LT); break;
-        case AGO_TOKEN_GT:      emit(c, AGO_OP_GT); break;
-        case AGO_TOKEN_LE:      emit(c, AGO_OP_LE); break;
-        case AGO_TOKEN_GE:      emit(c, AGO_OP_GE); break;
+        case AGL_TOKEN_PLUS:    emit(c, AGL_OP_ADD); break;
+        case AGL_TOKEN_MINUS:   emit(c, AGL_OP_SUB); break;
+        case AGL_TOKEN_STAR:    emit(c, AGL_OP_MUL); break;
+        case AGL_TOKEN_SLASH:   emit(c, AGL_OP_DIV); break;
+        case AGL_TOKEN_PERCENT: emit(c, AGL_OP_MOD); break;
+        case AGL_TOKEN_EQ:      emit(c, AGL_OP_EQ); break;
+        case AGL_TOKEN_NEQ:     emit(c, AGL_OP_NEQ); break;
+        case AGL_TOKEN_LT:      emit(c, AGL_OP_LT); break;
+        case AGL_TOKEN_GT:      emit(c, AGL_OP_GT); break;
+        case AGL_TOKEN_LE:      emit(c, AGL_OP_LE); break;
+        case AGL_TOKEN_GE:      emit(c, AGL_OP_GE); break;
         default:
-            ago_error_set(c->ctx, AGO_ERR_RUNTIME,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(c->ctx, AGL_ERR_RUNTIME,
+                          agl_loc(NULL, node->line, node->column),
                           "unsupported binary operator in compiler");
             break;
         }
         break;
     }
 
-    case AGO_NODE_CALL: {
+    case AGL_NODE_CALL: {
         /* Check if callee is a builtin */
-        if (node->as.call.callee->kind == AGO_NODE_IDENT) {
+        if (node->as.call.callee->kind == AGL_NODE_IDENT) {
             const char *name = node->as.call.callee->as.ident.name;
             int len = node->as.call.callee->as.ident.length;
-            AgoBuiltinId bid = resolve_builtin(name, len);
-            if (bid != AGO_BUILTIN_NONE) {
+            AglBuiltinId bid = resolve_builtin(name, len);
+            if (bid != AGL_BUILTIN_NONE) {
                 /* Compile arguments */
                 for (int i = 0; i < node->as.call.arg_count; i++) {
                     compile_expr(c, node->as.call.args[i]);
                 }
-                emit(c, AGO_OP_CALL_BUILTIN);
+                emit(c, AGL_OP_CALL_BUILTIN);
                 emit_u16(c, (uint16_t)bid);
                 emit(c, (uint8_t)node->as.call.arg_count);
                 break;
@@ -277,64 +277,64 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         for (int i = 0; i < node->as.call.arg_count; i++) {
             compile_expr(c, node->as.call.args[i]);
         }
-        emit(c, AGO_OP_CALL);
+        emit(c, AGL_OP_CALL);
         emit(c, (uint8_t)node->as.call.arg_count);
         break;
     }
 
-    case AGO_NODE_ARRAY_LIT:
+    case AGL_NODE_ARRAY_LIT:
         for (int i = 0; i < node->as.array_lit.count; i++) {
             compile_expr(c, node->as.array_lit.elements[i]);
         }
-        emit(c, AGO_OP_ARRAY);
+        emit(c, AGL_OP_ARRAY);
         emit_u16(c, (uint16_t)node->as.array_lit.count);
         break;
 
-    case AGO_NODE_MAP_LIT:
+    case AGL_NODE_MAP_LIT:
         for (int i = 0; i < node->as.map_lit.count; i++) {
             /* Push key as string constant */
             int key_idx = add_string_const(c, node->as.map_lit.keys[i],
                                            node->as.map_lit.key_lengths[i]);
-            emit(c, AGO_OP_CONST);
+            emit(c, AGL_OP_CONST);
             emit_u16(c, (uint16_t)key_idx);
             /* Compile value expression */
             compile_expr(c, node->as.map_lit.values[i]);
         }
-        emit(c, AGO_OP_MAP);
+        emit(c, AGL_OP_MAP);
         emit_u16(c, (uint16_t)node->as.map_lit.count);
         break;
 
-    case AGO_NODE_INDEX:
+    case AGL_NODE_INDEX:
         compile_expr(c, node->as.index_expr.object);
         compile_expr(c, node->as.index_expr.index);
-        emit(c, AGO_OP_INDEX);
+        emit(c, AGL_OP_INDEX);
         break;
 
-    case AGO_NODE_STRUCT_LIT: {
+    case AGL_NODE_STRUCT_LIT: {
         /* Push field name indices and values interleaved */
         for (int i = 0; i < node->as.struct_lit.field_count; i++) {
             /* Push field name as constant (for struct construction) */
             int name_idx = add_string_const(c, node->as.struct_lit.field_names[i],
                                             node->as.struct_lit.field_name_lengths[i]);
-            emit(c, AGO_OP_CONST);
+            emit(c, AGL_OP_CONST);
             emit_u16(c, (uint16_t)name_idx);
             compile_expr(c, node->as.struct_lit.field_values[i]);
         }
         int type_idx = add_string_const(c, node->as.struct_lit.name,
                                         node->as.struct_lit.name_length);
-        emit(c, AGO_OP_STRUCT);
+        emit(c, AGL_OP_STRUCT);
         emit_u16(c, (uint16_t)type_idx);
         emit(c, (uint8_t)node->as.struct_lit.field_count);
         break;
     }
 
-    case AGO_NODE_LAMBDA: {
+    case AGL_NODE_LAMBDA: {
         /* Sub-compile the lambda body into a new chunk */
         Compiler sub;
         sub.ctx = c->ctx;
         sub.arena = c->arena;
         sub.gc = c->gc;
-        sub.chunk = ago_chunk_new();
+        sub.chunk = agl_chunk_new();
         sub.scope_depth = 0;
         sub.block_var_count = 0;
         sub.loop_depth = 0;
@@ -345,11 +345,11 @@ static void compile_expr(Compiler *c, AgoNode *node) {
             compile_stmt(&sub, node->as.fn_decl.body);
         }
         /* Implicit return nil */
-        emit(&sub, AGO_OP_RETURN_NIL);
+        emit(&sub, AGL_OP_RETURN_NIL);
 
         /* Create function value with the chunk */
-        AgoFnVal *fn = ago_gc_alloc(c->gc, sizeof(AgoFnVal), fn_cleanup);
-        if (!fn) { ago_chunk_free(sub.chunk); return; }
+        AglFnVal *fn = agl_gc_alloc(c->gc, sizeof(AglFnVal), fn_cleanup);
+        if (!fn) { agl_chunk_free(sub.chunk); return; }
         fn->decl = node;
         fn->chunk = sub.chunk;
         fn->arity = node->as.fn_decl.param_count;
@@ -359,33 +359,33 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         fn->captured_values = NULL;
         fn->captured_immutable = NULL;
 
-        AgoVal fn_val;
+        AglVal fn_val;
         fn_val.kind = VAL_FN;
         fn_val.as.fn = fn;
         int idx = add_const(c, fn_val);
-        emit(c, AGO_OP_CLOSURE);
+        emit(c, AGL_OP_CLOSURE);
         emit_u16(c, (uint16_t)idx);
         break;
     }
 
-    case AGO_NODE_RESULT_OK:
+    case AGL_NODE_RESULT_OK:
         compile_expr(c, node->as.result_val.value);
-        emit(c, AGO_OP_RESULT_OK);
+        emit(c, AGL_OP_RESULT_OK);
         break;
 
-    case AGO_NODE_RESULT_ERR:
+    case AGL_NODE_RESULT_ERR:
         compile_expr(c, node->as.result_val.value);
-        emit(c, AGO_OP_RESULT_ERR);
+        emit(c, AGL_OP_RESULT_ERR);
         break;
 
-    case AGO_NODE_MATCH_EXPR: {
+    case AGL_NODE_MATCH_EXPR: {
         compile_expr(c, node->as.match_expr.subject);
         /* OP_MATCH ok_name_idx err_name_idx ok_offset err_offset */
         int ok_name = add_string_const(c, node->as.match_expr.ok_name,
                                        node->as.match_expr.ok_name_length);
         int err_name = add_string_const(c, node->as.match_expr.err_name,
                                         node->as.match_expr.err_name_length);
-        emit(c, AGO_OP_MATCH);
+        emit(c, AGL_OP_MATCH);
         emit_u16(c, (uint16_t)ok_name);
         emit_u16(c, (uint16_t)err_name);
         int ok_offset_pos = c->chunk->code_count;
@@ -396,7 +396,7 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         /* Ok branch */
         int ok_start = c->chunk->code_count;
         compile_expr(c, node->as.match_expr.ok_body);
-        int ok_end_jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP);
+        int ok_end_jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP);
 
         /* Err branch */
         int err_start = c->chunk->code_count;
@@ -408,13 +408,13 @@ static void compile_expr(Compiler *c, AgoNode *node) {
         c->chunk->code[ok_offset_pos + 1] = (uint8_t)((ok_start - base) >> 8);
         c->chunk->code[err_offset_pos] = (uint8_t)((err_start - base) & 0xff);
         c->chunk->code[err_offset_pos + 1] = (uint8_t)((err_start - base) >> 8);
-        ago_chunk_patch_jump(c->chunk, ok_end_jump);
+        agl_chunk_patch_jump(c->chunk, ok_end_jump);
         break;
     }
 
     default:
-        ago_error_set(c->ctx, AGO_ERR_RUNTIME,
-                      ago_loc(NULL, node->line, node->column),
+        agl_error_set(c->ctx, AGL_ERR_RUNTIME,
+                      agl_loc(NULL, node->line, node->column),
                       "unsupported expression in compiler");
         break;
     }
@@ -422,74 +422,74 @@ static void compile_expr(Compiler *c, AgoNode *node) {
 
 /* ---- Statement compilation ---- */
 
-static void compile_stmt(Compiler *c, AgoNode *node) {
-    if (!node || ago_error_occurred(c->ctx)) return;
+static void compile_stmt(Compiler *c, AglNode *node) {
+    if (!node || agl_error_occurred(c->ctx)) return;
 
     emit_line(c, node->line);
 
     switch (node->kind) {
-    case AGO_NODE_EXPR_STMT:
+    case AGL_NODE_EXPR_STMT:
         compile_expr(c, node->as.expr_stmt.expr);
-        emit(c, AGO_OP_POP);
+        emit(c, AGL_OP_POP);
         break;
 
-    case AGO_NODE_LET_STMT:
-    case AGO_NODE_VAR_STMT: {
+    case AGL_NODE_LET_STMT:
+    case AGL_NODE_VAR_STMT: {
         if (node->as.var_decl.initializer) {
             compile_expr(c, node->as.var_decl.initializer);
         } else {
-            emit(c, AGO_OP_NIL);
+            emit(c, AGL_OP_NIL);
         }
         int idx = add_string_const(c, node->as.var_decl.name,
                                    node->as.var_decl.name_length);
-        emit(c, node->kind == AGO_NODE_LET_STMT ? AGO_OP_DEFINE_LET : AGO_OP_DEFINE_VAR);
+        emit(c, node->kind == AGL_NODE_LET_STMT ? AGL_OP_DEFINE_LET : AGL_OP_DEFINE_VAR);
         emit_u16(c, (uint16_t)idx);
         c->block_var_count++;
         break;
     }
 
-    case AGO_NODE_ASSIGN_STMT: {
+    case AGL_NODE_ASSIGN_STMT: {
         compile_expr(c, node->as.assign_stmt.value);
         int idx = add_string_const(c, node->as.assign_stmt.name,
                                    node->as.assign_stmt.name_length);
-        emit(c, AGO_OP_SET_VAR);
+        emit(c, AGL_OP_SET_VAR);
         emit_u16(c, (uint16_t)idx);
         break;
     }
 
-    case AGO_NODE_RETURN_STMT:
+    case AGL_NODE_RETURN_STMT:
         if (node->as.return_stmt.value) {
             compile_expr(c, node->as.return_stmt.value);
-            emit(c, AGO_OP_RETURN);
+            emit(c, AGL_OP_RETURN);
         } else {
-            emit(c, AGO_OP_RETURN_NIL);
+            emit(c, AGL_OP_RETURN_NIL);
         }
         break;
 
-    case AGO_NODE_IF_STMT: {
+    case AGL_NODE_IF_STMT: {
         compile_expr(c, node->as.if_stmt.condition);
-        int false_jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP_IF_FALSE);
+        int false_jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP_IF_FALSE);
         compile_stmt(c, node->as.if_stmt.then_block);
         if (node->as.if_stmt.else_block) {
-            int end_jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP);
-            ago_chunk_patch_jump(c->chunk, false_jump);
+            int end_jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP);
+            agl_chunk_patch_jump(c->chunk, false_jump);
             compile_stmt(c, node->as.if_stmt.else_block);
-            ago_chunk_patch_jump(c->chunk, end_jump);
+            agl_chunk_patch_jump(c->chunk, end_jump);
         } else {
-            ago_chunk_patch_jump(c->chunk, false_jump);
+            agl_chunk_patch_jump(c->chunk, false_jump);
         }
         break;
     }
 
-    case AGO_NODE_WHILE_STMT: {
+    case AGL_NODE_WHILE_STMT: {
         int loop_start = c->chunk->code_count;
         compile_expr(c, node->as.while_stmt.condition);
-        int exit_jump = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP_IF_FALSE);
+        int exit_jump = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP_IF_FALSE);
 
         /* Push loop context */
         if (c->loop_depth >= MAX_LOOP_DEPTH) {
-            ago_error_set(c->ctx, AGO_ERR_RUNTIME,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(c->ctx, AGL_ERR_RUNTIME,
+                          agl_loc(NULL, node->line, node->column),
                           "too many nested loops (max %d)", MAX_LOOP_DEPTH);
             break;
         }
@@ -503,36 +503,36 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
 
         c->loop_depth--;
 
-        ago_chunk_emit_loop(c->chunk, loop_start);
-        ago_chunk_patch_jump(c->chunk, exit_jump);
+        agl_chunk_emit_loop(c->chunk, loop_start);
+        agl_chunk_patch_jump(c->chunk, exit_jump);
 
         /* Patch all break jumps to here (past the loop) */
         for (int i = 0; i < lc->break_count; i++) {
-            ago_chunk_patch_jump(c->chunk, lc->break_patches[i]);
+            agl_chunk_patch_jump(c->chunk, lc->break_patches[i]);
         }
         break;
     }
 
-    case AGO_NODE_FOR_STMT: {
+    case AGL_NODE_FOR_STMT: {
         /* Compile iterable */
         compile_expr(c, node->as.for_stmt.iterable);
-        emit(c, AGO_OP_ITER_SETUP);
+        emit(c, AGL_OP_ITER_SETUP);
 
         int loop_start = c->chunk->code_count;
         int exit_jump_pos = c->chunk->code_count;
-        emit(c, AGO_OP_ITER_NEXT);
+        emit(c, AGL_OP_ITER_NEXT);
         emit_u16(c, 0); /* placeholder for end offset */
 
         /* Define loop variable from TOS (element pushed by ITER_NEXT) */
         int var_idx = add_string_const(c, node->as.for_stmt.var_name,
                                        node->as.for_stmt.var_name_length);
-        emit(c, AGO_OP_DEFINE_VAR);
+        emit(c, AGL_OP_DEFINE_VAR);
         emit_u16(c, (uint16_t)var_idx);
 
         /* Push loop context */
         if (c->loop_depth >= MAX_LOOP_DEPTH) {
-            ago_error_set(c->ctx, AGO_ERR_RUNTIME,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(c->ctx, AGL_ERR_RUNTIME,
+                          agl_loc(NULL, node->line, node->column),
                           "too many nested loops (max %d)", MAX_LOOP_DEPTH);
             break;
         }
@@ -548,95 +548,95 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         c->loop_depth--;
 
         /* Pop loop variable */
-        emit(c, AGO_OP_POP_SCOPE);
+        emit(c, AGL_OP_POP_SCOPE);
         emit(c, 1);
 
-        ago_chunk_emit_loop(c->chunk, loop_start);
+        agl_chunk_emit_loop(c->chunk, loop_start);
 
         /* Patch ITER_NEXT exit jump */
-        ago_chunk_patch_jump(c->chunk, exit_jump_pos + 1);
+        agl_chunk_patch_jump(c->chunk, exit_jump_pos + 1);
 
         /* Patch all break jumps to here (before ITER_CLEANUP) */
         for (int i = 0; i < lc->break_count; i++) {
-            ago_chunk_patch_jump(c->chunk, lc->break_patches[i]);
+            agl_chunk_patch_jump(c->chunk, lc->break_patches[i]);
         }
 
-        emit(c, AGO_OP_ITER_CLEANUP);
+        emit(c, AGL_OP_ITER_CLEANUP);
         break;
     }
 
-    case AGO_NODE_BREAK_STMT: {
+    case AGL_NODE_BREAK_STMT: {
         if (c->loop_depth == 0) {
-            ago_error_set(c->ctx, AGO_ERR_SYNTAX,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(c->ctx, AGL_ERR_SYNTAX,
+                          agl_loc(NULL, node->line, node->column),
                           "'break' outside of loop");
             break;
         }
         LoopCtx *lc = &c->loop_stack[c->loop_depth - 1];
         /* Pop block-local variables defined inside the loop body */
         if (c->block_var_count > 0) {
-            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, AGL_OP_POP_SCOPE);
             emit(c, (uint8_t)c->block_var_count);
         }
         if (lc->is_for) {
             /* Pop the loop variable (1) defined by the for-in */
-            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, AGL_OP_POP_SCOPE);
             emit(c, 1);
         }
         /* Emit forward jump to be patched at loop end */
-        int patch = ago_chunk_emit_jump(c->chunk, AGO_OP_JUMP);
+        int patch = agl_chunk_emit_jump(c->chunk, AGL_OP_JUMP);
         if (lc->break_count < MAX_BREAK_PATCHES) {
             lc->break_patches[lc->break_count++] = patch;
         }
         break;
     }
 
-    case AGO_NODE_CONTINUE_STMT: {
+    case AGL_NODE_CONTINUE_STMT: {
         if (c->loop_depth == 0) {
-            ago_error_set(c->ctx, AGO_ERR_SYNTAX,
-                          ago_loc(NULL, node->line, node->column),
+            agl_error_set(c->ctx, AGL_ERR_SYNTAX,
+                          agl_loc(NULL, node->line, node->column),
                           "'continue' outside of loop");
             break;
         }
         LoopCtx *lc = &c->loop_stack[c->loop_depth - 1];
         /* Pop block-local variables defined inside the loop body */
         if (c->block_var_count > 0) {
-            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, AGL_OP_POP_SCOPE);
             emit(c, (uint8_t)c->block_var_count);
         }
         if (lc->is_for) {
             /* Pop the loop variable (1) defined by the for-in */
-            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, AGL_OP_POP_SCOPE);
             emit(c, 1);
         }
         /* Jump back to loop start */
-        ago_chunk_emit_loop(c->chunk, lc->continue_target);
+        agl_chunk_emit_loop(c->chunk, lc->continue_target);
         break;
     }
 
-    case AGO_NODE_BLOCK: {
+    case AGL_NODE_BLOCK: {
         int saved_var_count = c->block_var_count;
         c->block_var_count = 0;
         for (int i = 0; i < node->as.block.stmt_count; i++) {
             compile_stmt(c, node->as.block.stmts[i]);
-            if (ago_error_occurred(c->ctx)) return;
+            if (agl_error_occurred(c->ctx)) return;
         }
         /* Pop block-local variables */
         if (c->block_var_count > 0) {
-            emit(c, AGO_OP_POP_SCOPE);
+            emit(c, AGL_OP_POP_SCOPE);
             emit(c, (uint8_t)c->block_var_count);
         }
         c->block_var_count = saved_var_count;
         break;
     }
 
-    case AGO_NODE_FN_DECL: {
+    case AGL_NODE_FN_DECL: {
         /* Sub-compile the function body */
         Compiler sub;
         sub.ctx = c->ctx;
         sub.arena = c->arena;
         sub.gc = c->gc;
-        sub.chunk = ago_chunk_new();
+        sub.chunk = agl_chunk_new();
         sub.scope_depth = 0;
         sub.block_var_count = 0;
         sub.loop_depth = 0;
@@ -645,10 +645,10 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         if (node->as.fn_decl.body) {
             compile_stmt(&sub, node->as.fn_decl.body);
         }
-        emit(&sub, AGO_OP_RETURN_NIL);
+        emit(&sub, AGL_OP_RETURN_NIL);
 
-        AgoFnVal *fn = ago_gc_alloc(c->gc, sizeof(AgoFnVal), fn_cleanup);
-        if (!fn) { ago_chunk_free(sub.chunk); return; }
+        AglFnVal *fn = agl_gc_alloc(c->gc, sizeof(AglFnVal), fn_cleanup);
+        if (!fn) { agl_chunk_free(sub.chunk); return; }
         fn->decl = node;
         fn->chunk = sub.chunk;
         fn->arity = node->as.fn_decl.param_count;
@@ -658,36 +658,36 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
         fn->captured_values = NULL;
         fn->captured_immutable = NULL;
 
-        AgoVal fn_val;
+        AglVal fn_val;
         fn_val.kind = VAL_FN;
         fn_val.as.fn = fn;
         int fn_idx = add_const(c, fn_val);
-        emit(c, AGO_OP_CLOSURE);
+        emit(c, AGL_OP_CLOSURE);
         emit_u16(c, (uint16_t)fn_idx);
 
         int name_idx = add_string_const(c, node->as.fn_decl.name,
                                         node->as.fn_decl.name_length);
-        emit(c, AGO_OP_DEFINE_LET);
+        emit(c, AGL_OP_DEFINE_LET);
         emit_u16(c, (uint16_t)name_idx);
         c->block_var_count++;
         break;
     }
 
-    case AGO_NODE_STRUCT_DECL:
+    case AGL_NODE_STRUCT_DECL:
         /* No-op at runtime */
         break;
 
-    case AGO_NODE_IMPORT: {
+    case AGL_NODE_IMPORT: {
         int idx = add_string_const(c, node->as.import_stmt.path,
                                    node->as.import_stmt.path_length);
-        emit(c, AGO_OP_IMPORT);
+        emit(c, AGL_OP_IMPORT);
         emit_u16(c, (uint16_t)idx);
         break;
     }
 
     default:
-        ago_error_set(c->ctx, AGO_ERR_RUNTIME,
-                      ago_loc(NULL, node->line, node->column),
+        agl_error_set(c->ctx, AGL_ERR_RUNTIME,
+                      agl_loc(NULL, node->line, node->column),
                       "unsupported statement in compiler");
         break;
     }
@@ -695,10 +695,10 @@ static void compile_stmt(Compiler *c, AgoNode *node) {
 
 /* ---- Public API ---- */
 
-AgoChunk *ago_compile(AgoNode *program, AgoCtx *ctx, AgoArena *arena, AgoGc *gc) {
-    if (!program || program->kind != AGO_NODE_PROGRAM) return NULL;
+AglChunk *agl_compile(AglNode *program, AglCtx *ctx, AglArena *arena, AglGc *gc) {
+    if (!program || program->kind != AGL_NODE_PROGRAM) return NULL;
 
-    AgoChunk *chunk = ago_chunk_new();
+    AglChunk *chunk = agl_chunk_new();
     if (!chunk) return NULL;
 
     Compiler c;
@@ -712,14 +712,14 @@ AgoChunk *ago_compile(AgoNode *program, AgoCtx *ctx, AgoArena *arena, AgoGc *gc)
 
     for (int i = 0; i < program->as.program.decl_count; i++) {
         compile_stmt(&c, program->as.program.decls[i]);
-        if (ago_error_occurred(ctx)) {
-            ago_chunk_free(chunk);
+        if (agl_error_occurred(ctx)) {
+            agl_chunk_free(chunk);
             return NULL;
         }
     }
 
     /* End with implicit return nil for top-level */
-    emit(&c, AGO_OP_RETURN_NIL);
+    emit(&c, AGL_OP_RETURN_NIL);
 
     return chunk;
 }

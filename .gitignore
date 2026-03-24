@@ -2,7 +2,7 @@
 *.o
 *.d
 *.dSYM/
-ago
+agl
 
 # Test binaries
 tests/test_lexer

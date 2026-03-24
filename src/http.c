@@ -1,7 +1,7 @@
 #include "http.h"
 #include <string.h>
 
-#ifdef AGO_HAS_CURL
+#ifdef AGL_HAS_CURL
 #include <curl/curl.h>
 
 /* ---- Response buffer ---- */
@@ -58,15 +58,15 @@ static size_t header_callback(char *ptr, size_t size, size_t nmemb, void *userda
 
 /* ---- Parse response headers into a map ---- */
 
-static AgoMapVal *parse_response_headers(const char *raw, size_t raw_len,
-                                          AgoArena *arena, AgoGc *gc) {
-    AgoMapVal *m = ago_gc_alloc(gc, sizeof(AgoMapVal), map_cleanup);
+static AglMapVal *parse_response_headers(const char *raw, size_t raw_len,
+                                          AglArena *arena, AglGc *gc) {
+    AglMapVal *m = agl_gc_alloc(gc, sizeof(AglMapVal), map_cleanup);
     if (!m) return NULL;
     m->count = 0;
     m->capacity = 32;
     m->keys = malloc(sizeof(char *) * 32);
     m->key_lengths = malloc(sizeof(int) * 32);
-    m->values = malloc(sizeof(AgoVal) * 32);
+    m->values = malloc(sizeof(AglVal) * 32);
     if (!m->keys || !m->key_lengths || !m->values) return m;
 
     const char *p = raw;
@@ -87,9 +87,9 @@ static AgoMapVal *parse_response_headers(const char *raw, size_t raw_len,
             int vlen = (int)(eol - vstart);
 
             if (m->count < m->capacity) {
-                char *key_copy = ago_arena_alloc(arena, (size_t)klen);
+                char *key_copy = agl_arena_alloc(arena, (size_t)klen);
                 if (key_copy) memcpy(key_copy, p, (size_t)klen);
-                char *val_copy = ago_arena_alloc(arena, (size_t)(vlen > 0 ? vlen : 1));
+                char *val_copy = agl_arena_alloc(arena, (size_t)(vlen > 0 ? vlen : 1));
                 if (val_copy && vlen > 0) memcpy(val_copy, vstart, (size_t)vlen);
 
                 m->keys[m->count] = key_copy ? key_copy : "";
@@ -111,19 +111,19 @@ static AgoMapVal *parse_response_headers(const char *raw, size_t raw_len,
 
 /* ---- Public API ---- */
 
-AgoVal ago_http_request(const char *method,
+AglVal agl_http_request(const char *method,
                         const char *url, int url_len,
-                        AgoMapVal *headers,
+                        AglMapVal *headers,
                         const char *body, int body_len,
-                        AgoArena *arena, AgoGc *gc) {
+                        AglArena *arena, AglGc *gc) {
     /* Null-terminate URL */
     char *url_z = malloc((size_t)url_len + 1);
     if (!url_z) {
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("out of memory", 13);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
     memcpy(url_z, url, (size_t)url_len);
     url_z[url_len] = '\0';
@@ -131,11 +131,11 @@ AgoVal ago_http_request(const char *method,
     CURL *curl = curl_easy_init();
     if (!curl) {
         free(url_z);
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("failed to initialize HTTP client", 32);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
 
     HttpBuf resp_body;
@@ -180,7 +180,7 @@ AgoVal ago_http_request(const char *method,
             int vlen = 0;
             const char *vdata = "";
             if (headers->values[i].kind == VAL_STRING) {
-                AgoVal vval = headers->values[i];
+                AglVal vval = headers->values[i];
                 vdata = str_content(vval, &vlen);
             }
             int hlen = klen + 2 + vlen; /* "Key: Value" */
@@ -214,42 +214,42 @@ AgoVal ago_http_request(const char *method,
     if (res != CURLE_OK) {
         const char *err_msg = curl_easy_strerror(res);
         int err_len = (int)strlen(err_msg);
-        char *err_copy = ago_arena_alloc(arena, (size_t)err_len);
+        char *err_copy = agl_arena_alloc(arena, (size_t)err_len);
         if (err_copy) memcpy(err_copy, err_msg, (size_t)err_len);
         buf_free(&resp_body);
         buf_free(&resp_headers);
 
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string(err_copy ? err_copy : "HTTP request failed",
                                err_copy ? err_len : 19);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
 
     /* Copy response body to arena */
     char *body_copy = NULL;
     int body_copy_len = (int)resp_body.size;
     if (body_copy_len > 0) {
-        body_copy = ago_arena_alloc(arena, resp_body.size);
+        body_copy = agl_arena_alloc(arena, resp_body.size);
         if (body_copy) memcpy(body_copy, resp_body.data, resp_body.size);
     }
 
     /* Parse response headers */
-    AgoMapVal *resp_hdr_map = parse_response_headers(
+    AglMapVal *resp_hdr_map = parse_response_headers(
         resp_headers.data, resp_headers.size, arena, gc);
 
     buf_free(&resp_body);
     buf_free(&resp_headers);
 
     /* Build result map: {"status": int, "body": string, "headers": map} */
-    AgoMapVal *result_map = ago_gc_alloc(gc, sizeof(AgoMapVal), map_cleanup);
+    AglMapVal *result_map = agl_gc_alloc(gc, sizeof(AglMapVal), map_cleanup);
     if (!result_map) return val_nil();
     result_map->count = 3;
     result_map->capacity = 3;
     result_map->keys = malloc(sizeof(char *) * 3);
     result_map->key_lengths = malloc(sizeof(int) * 3);
-    result_map->values = malloc(sizeof(AgoVal) * 3);
+    result_map->values = malloc(sizeof(AglVal) * 3);
     if (!result_map->keys || !result_map->key_lengths || !result_map->values) {
         return val_nil();
     }
@@ -265,38 +265,38 @@ AgoVal ago_http_request(const char *method,
     result_map->keys[2] = "headers";
     result_map->key_lengths[2] = 7;
     if (resp_hdr_map) {
-        result_map->values[2] = (AgoVal){VAL_MAP, {.map = resp_hdr_map}};
+        result_map->values[2] = (AglVal){VAL_MAP, {.map = resp_hdr_map}};
     } else {
         result_map->values[2] = val_nil();
     }
 
     /* Wrap in ok Result */
-    AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+    AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
     if (!rv) return val_nil();
     rv->is_ok = true;
-    rv->value = (AgoVal){VAL_MAP, {.map = result_map}};
-    return (AgoVal){VAL_RESULT, {.result = rv}};
+    rv->value = (AglVal){VAL_MAP, {.map = result_map}};
+    return (AglVal){VAL_RESULT, {.result = rv}};
 }
 
-#else /* !AGO_HAS_CURL */
+#else /* !AGL_HAS_CURL */
 
-AgoVal ago_http_request(const char *method,
+AglVal agl_http_request(const char *method,
                         const char *url, int url_len,
-                        AgoMapVal *headers,
+                        AglMapVal *headers,
                         const char *body, int body_len,
-                        AgoArena *arena, AgoGc *gc) {
+                        AglArena *arena, AglGc *gc) {
     (void)method; (void)url; (void)url_len;
     (void)headers; (void)body; (void)body_len;
 
-    AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+    AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
     if (!rv) return val_nil();
     rv->is_ok = false;
     const char *msg = "HTTP not available: libcurl required";
     int msg_len = (int)strlen(msg);
-    char *msg_copy = ago_arena_alloc(arena, (size_t)msg_len);
+    char *msg_copy = agl_arena_alloc(arena, (size_t)msg_len);
     if (msg_copy) memcpy(msg_copy, msg, (size_t)msg_len);
     rv->value = val_string(msg_copy ? msg_copy : msg, msg_len);
-    return (AgoVal){VAL_RESULT, {.result = rv}};
+    return (AglVal){VAL_RESULT, {.result = rv}};
 }
 
-#endif /* AGO_HAS_CURL */
+#endif /* AGL_HAS_CURL */

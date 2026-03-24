@@ -9,19 +9,19 @@
 /* ---- Parser ---- */
 
 typedef struct {
-    AgoLexer lexer;
-    AgoToken current;
-    AgoToken previous;
-    AgoArena *arena;    /* owns all AST nodes */
-    AgoCtx *ctx;        /* error context (not owned) */
-} AgoParser;
+    AglLexer lexer;
+    AglToken current;
+    AglToken previous;
+    AglArena *arena;    /* owns all AST nodes */
+    AglCtx *ctx;        /* error context (not owned) */
+} AglParser;
 
 /* Initialize a parser */
-void ago_parser_init(AgoParser *parser, const char *source, const char *file,
-                     AgoArena *arena, AgoCtx *ctx);
+void agl_parser_init(AglParser *parser, const char *source, const char *file,
+                     AglArena *arena, AglCtx *ctx);
 
 /* Parse the entire source into a program node */
-AgoNode *ago_parser_parse(AgoParser *parser);
+AglNode *agl_parser_parse(AglParser *parser);
 
 /* Parse a single expression (useful for testing) */
-AgoNode *ago_parser_parse_expression(AgoParser *parser);
+AglNode *agl_parser_parse_expression(AglParser *parser);

@@ -6,7 +6,7 @@
 
 /* ---- Read all data from a file descriptor into an arena-allocated buffer ---- */
 
-static char *read_fd_to_arena(int fd, int *out_len, AgoArena *arena) {
+static char *read_fd_to_arena(int fd, int *out_len, AglArena *arena) {
     /* Read into a temporary heap buffer, then copy to arena */
     size_t capacity = 4096;
     size_t used = 0;
@@ -31,7 +31,7 @@ static char *read_fd_to_arena(int fd, int *out_len, AgoArena *arena) {
         return NULL;
     }
 
-    char *result = ago_arena_alloc(arena, used);
+    char *result = agl_arena_alloc(arena, used);
     if (result) {
         memcpy(result, tmp, used);
     }
@@ -41,17 +41,17 @@ static char *read_fd_to_arena(int fd, int *out_len, AgoArena *arena) {
 
 /* ---- Public API ---- */
 
-AgoVal ago_exec(const char *cmd, int cmd_len,
-                AgoArrayVal *args,
-                AgoArena *arena, AgoGc *gc) {
+AglVal agl_exec(const char *cmd, int cmd_len,
+                AglArrayVal *args,
+                AglArena *arena, AglGc *gc) {
     /* Build null-terminated command string */
     char *cmd_z = malloc((size_t)cmd_len + 1);
     if (!cmd_z) {
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("out of memory", 13);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
     memcpy(cmd_z, cmd, (size_t)cmd_len);
     cmd_z[cmd_len] = '\0';
@@ -61,11 +61,11 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
     char **argv = malloc(sizeof(char *) * (size_t)(argc + 2));
     if (!argv) {
         free(cmd_z);
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("out of memory", 13);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
     argv[0] = cmd_z;
 
@@ -80,11 +80,11 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
                 for (int j = 0; j < i; j++) free(argv[j + 1]);
                 free(argv);
                 free(cmd_z);
-                AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+                AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
                 if (!rv) return val_nil();
                 rv->is_ok = false;
                 rv->value = val_string("out of memory", 13);
-                return (AgoVal){VAL_RESULT, {.result = rv}};
+                return (AglVal){VAL_RESULT, {.result = rv}};
             }
             memcpy(arg_z, sdata, (size_t)slen);
             arg_z[slen] = '\0';
@@ -101,21 +101,21 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
     if (pipe(stdout_pipe) != 0) {
         for (int i = 0; i < argc; i++) free(argv[i + 1]);
         free(argv); free(cmd_z);
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("failed to create pipes", 22);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
     if (pipe(stderr_pipe) != 0) {
         close(stdout_pipe[0]); close(stdout_pipe[1]);
         for (int i = 0; i < argc; i++) free(argv[i + 1]);
         free(argv); free(cmd_z);
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("failed to create pipes", 22);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
 
     pid_t pid = fork();
@@ -125,11 +125,11 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
         for (int i = 0; i < argc; i++) free(argv[i + 1]);
         free(argv);
         free(cmd_z);
-        AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+        AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
         if (!rv) return val_nil();
         rv->is_ok = false;
         rv->value = val_string("fork failed", 11);
-        return (AgoVal){VAL_RESULT, {.result = rv}};
+        return (AglVal){VAL_RESULT, {.result = rv}};
     }
 
     if (pid == 0) {
@@ -171,13 +171,13 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
     int exit_code = WIFEXITED(wstatus) ? WEXITSTATUS(wstatus) : -1;
 
     /* Build result map: {"stdout": string, "stderr": string, "status": int} */
-    AgoMapVal *result_map = ago_gc_alloc(gc, sizeof(AgoMapVal), map_cleanup);
+    AglMapVal *result_map = agl_gc_alloc(gc, sizeof(AglMapVal), map_cleanup);
     if (!result_map) return val_nil();
     result_map->count = 3;
     result_map->capacity = 3;
     result_map->keys = malloc(sizeof(char *) * 3);
     result_map->key_lengths = malloc(sizeof(int) * 3);
-    result_map->values = malloc(sizeof(AgoVal) * 3);
+    result_map->values = malloc(sizeof(AglVal) * 3);
     if (!result_map->keys || !result_map->key_lengths || !result_map->values) {
         return val_nil();
     }
@@ -195,9 +195,9 @@ AgoVal ago_exec(const char *cmd, int cmd_len,
     result_map->values[2] = val_int(exit_code);
 
     /* Wrap in ok Result */
-    AgoResultVal *rv = ago_gc_alloc(gc, sizeof(AgoResultVal), NULL);
+    AglResultVal *rv = agl_gc_alloc(gc, sizeof(AglResultVal), NULL);
     if (!rv) return val_nil();
     rv->is_ok = true;
-    rv->value = (AgoVal){VAL_MAP, {.map = result_map}};
-    return (AgoVal){VAL_RESULT, {.result = rv}};
+    rv->value = (AglVal){VAL_MAP, {.map = result_map}};
+    return (AglVal){VAL_RESULT, {.result = rv}};
 }

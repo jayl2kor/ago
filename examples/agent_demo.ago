@@ -1,0 +1,96 @@
+// Agent Demo - Ago AI agent capabilities showcase
+
+print("=== Ago Agent Demo ===")
+
+// 1. Environment variables
+let api_key = env_default("ANTHROPIC_API_KEY", "")
+if api_key == "" {
+    print("No ANTHROPIC_API_KEY set - running in demo mode")
+}
+
+// 2. JSON construction
+let request_body = {
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 256,
+    "messages": [
+        {"role": "user", "content": "Say hello in one sentence."}
+    ]
+}
+let json_str = json_stringify(request_body)
+print("Request: " + json_str)
+
+// 3. JSON round-trip
+let parsed = match json_parse(json_str) {
+    ok(data) -> data
+    err(e) -> {}
+}
+let model = parsed["model"]
+let msgs = parsed["messages"]
+print(f"Model: {model}")
+print(f"Messages count: {len(msgs)}")
+
+// 4. Map operations
+var headers = map_set({}, "content-type", "application/json")
+let headers = map_set(headers, "anthropic-version", "2023-06-01")
+print(f"Headers: {map_keys(headers)}")
+
+// 5. String manipulation
+let context = "The user wants to build an AI agent"
+let words = split(context, " ")
+print(f"Context has {len(words)} words")
+let has_agent = contains(context, "agent")
+print(f"Contains agent: {has_agent}")
+print(f"Upper first 3: {to_upper(substr(context, 0, 3))}")
+
+// 6. Process execution
+let result = exec("echo", ["Hello from subprocess!"])
+let output = match result {
+    ok(r) -> trim(r["stdout"])
+    err(e) -> e
+}
+print(f"Subprocess: {output}")
+
+// 7. Time functions
+let start = now()
+sleep(50)
+let elapsed = now() - start
+print(f"Slept {elapsed}ms")
+
+// 8. Data processing
+let data = [
+    {"name": "alice", "score": 95},
+    {"name": "bob", "score": 87},
+    {"name": "charlie", "score": 92}
+]
+
+print("")
+print("=== Scores ===")
+for item in data {
+    let name = item["name"]
+    let capitalized = to_upper(substr(name, 0, 1)) + substr(name, 1, len(name) - 1)
+    let score = item["score"]
+    print(f"{capitalized}: {score}")
+}
+
+// 9. Retry pattern with break
+print("")
+print("=== Retry Pattern ===")
+var attempts = 0
+while attempts < 3 {
+    attempts = attempts + 1
+    print(f"Attempt {attempts}...")
+    if attempts == 2 {
+        print("Success!")
+        break
+    }
+    sleep(10)
+}
+
+// 10. Filter and map on data
+let high_scores = filter(data, fn(item: int) -> bool {
+    return item["score"] >= 90
+})
+print(f"High scorers: {len(high_scores)}")
+
+print("")
+print("=== Demo Complete ===")

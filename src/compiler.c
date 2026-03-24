@@ -1,102 +1,14 @@
 #include "runtime.h"
 #include "compiler.h"
+#include "builtins_core.h"
 
 /* ---- Builtin name-to-ID mapping ---- */
 
-typedef enum {
-    AGL_BUILTIN_PRINT,
-    AGL_BUILTIN_LEN,
-    AGL_BUILTIN_TYPE,
-    AGL_BUILTIN_STR,
-    AGL_BUILTIN_INT,
-    AGL_BUILTIN_FLOAT,
-    AGL_BUILTIN_PUSH,
-    AGL_BUILTIN_MAP,
-    AGL_BUILTIN_FILTER,
-    AGL_BUILTIN_ABS,
-    AGL_BUILTIN_MIN,
-    AGL_BUILTIN_MAX,
-    AGL_BUILTIN_READ_FILE,
-    AGL_BUILTIN_WRITE_FILE,
-    AGL_BUILTIN_FILE_EXISTS,
-    /* Map builtins */
-    AGL_BUILTIN_MAP_GET,
-    AGL_BUILTIN_MAP_SET,
-    AGL_BUILTIN_MAP_KEYS,
-    AGL_BUILTIN_MAP_HAS,
-    AGL_BUILTIN_MAP_DEL,
-    /* String builtins */
-    AGL_BUILTIN_SPLIT,
-    AGL_BUILTIN_TRIM,
-    AGL_BUILTIN_CONTAINS,
-    AGL_BUILTIN_REPLACE,
-    AGL_BUILTIN_STARTS_WITH,
-    AGL_BUILTIN_ENDS_WITH,
-    AGL_BUILTIN_TO_UPPER,
-    AGL_BUILTIN_TO_LOWER,
-    AGL_BUILTIN_JOIN,
-    AGL_BUILTIN_SUBSTR,
-    AGL_BUILTIN_COUNT,
-    /* JSON builtins */
-    AGL_BUILTIN_JSON_PARSE,
-    AGL_BUILTIN_JSON_STRINGIFY,
-    /* Environment variable builtins */
-    AGL_BUILTIN_ENV,
-    AGL_BUILTIN_ENV_DEFAULT,
-    /* HTTP builtins */
-    AGL_BUILTIN_HTTP_GET,
-    AGL_BUILTIN_HTTP_POST,
-    /* Process execution */
-    AGL_BUILTIN_EXEC,
-    /* Time functions */
-    AGL_BUILTIN_NOW,
-    AGL_BUILTIN_SLEEP,
-    AGL_BUILTIN_NONE = -1,
-} AglBuiltinId;
-
 static AglBuiltinId resolve_builtin(const char *name, int len) {
-    if (agl_str_eq(name, len, "print", 5)) return AGL_BUILTIN_PRINT;
-    if (agl_str_eq(name, len, "len", 3)) return AGL_BUILTIN_LEN;
-    if (agl_str_eq(name, len, "type", 4)) return AGL_BUILTIN_TYPE;
-    if (agl_str_eq(name, len, "str", 3)) return AGL_BUILTIN_STR;
-    if (agl_str_eq(name, len, "int", 3)) return AGL_BUILTIN_INT;
-    if (agl_str_eq(name, len, "float", 5)) return AGL_BUILTIN_FLOAT;
-    if (agl_str_eq(name, len, "push", 4)) return AGL_BUILTIN_PUSH;
-    if (agl_str_eq(name, len, "map", 3)) return AGL_BUILTIN_MAP;
-    if (agl_str_eq(name, len, "filter", 6)) return AGL_BUILTIN_FILTER;
-    if (agl_str_eq(name, len, "abs", 3)) return AGL_BUILTIN_ABS;
-    if (agl_str_eq(name, len, "min", 3)) return AGL_BUILTIN_MIN;
-    if (agl_str_eq(name, len, "max", 3)) return AGL_BUILTIN_MAX;
-    if (agl_str_eq(name, len, "read_file", 9)) return AGL_BUILTIN_READ_FILE;
-    if (agl_str_eq(name, len, "write_file", 10)) return AGL_BUILTIN_WRITE_FILE;
-    if (agl_str_eq(name, len, "file_exists", 11)) return AGL_BUILTIN_FILE_EXISTS;
-    if (agl_str_eq(name, len, "map_get", 7)) return AGL_BUILTIN_MAP_GET;
-    if (agl_str_eq(name, len, "map_set", 7)) return AGL_BUILTIN_MAP_SET;
-    if (agl_str_eq(name, len, "map_keys", 8)) return AGL_BUILTIN_MAP_KEYS;
-    if (agl_str_eq(name, len, "map_has", 7)) return AGL_BUILTIN_MAP_HAS;
-    if (agl_str_eq(name, len, "map_del", 7)) return AGL_BUILTIN_MAP_DEL;
-    if (agl_str_eq(name, len, "split", 5)) return AGL_BUILTIN_SPLIT;
-    if (agl_str_eq(name, len, "trim", 4)) return AGL_BUILTIN_TRIM;
-    if (agl_str_eq(name, len, "contains", 8)) return AGL_BUILTIN_CONTAINS;
-    if (agl_str_eq(name, len, "replace", 7)) return AGL_BUILTIN_REPLACE;
-    if (agl_str_eq(name, len, "starts_with", 11)) return AGL_BUILTIN_STARTS_WITH;
-    if (agl_str_eq(name, len, "ends_with", 9)) return AGL_BUILTIN_ENDS_WITH;
-    if (agl_str_eq(name, len, "to_upper", 8)) return AGL_BUILTIN_TO_UPPER;
-    if (agl_str_eq(name, len, "to_lower", 8)) return AGL_BUILTIN_TO_LOWER;
-    if (agl_str_eq(name, len, "join", 4)) return AGL_BUILTIN_JOIN;
-    if (agl_str_eq(name, len, "substr", 6)) return AGL_BUILTIN_SUBSTR;
-    if (agl_str_eq(name, len, "json_parse", 10)) return AGL_BUILTIN_JSON_PARSE;
-    if (agl_str_eq(name, len, "json_stringify", 14)) return AGL_BUILTIN_JSON_STRINGIFY;
-    if (agl_str_eq(name, len, "env", 3)) return AGL_BUILTIN_ENV;
-    if (agl_str_eq(name, len, "env_default", 11)) return AGL_BUILTIN_ENV_DEFAULT;
-    if (agl_str_eq(name, len, "http_get", 8)) return AGL_BUILTIN_HTTP_GET;
-    if (agl_str_eq(name, len, "http_post", 9)) return AGL_BUILTIN_HTTP_POST;
-    if (agl_str_eq(name, len, "exec", 4)) return AGL_BUILTIN_EXEC;
-    if (agl_str_eq(name, len, "now", 3)) return AGL_BUILTIN_NOW;
-    if (agl_str_eq(name, len, "sleep", 5)) return AGL_BUILTIN_SLEEP;
+    /* ok/err are keywords, not builtins */
     if (agl_str_eq(name, len, "ok", 2)) return AGL_BUILTIN_NONE;
     if (agl_str_eq(name, len, "err", 3)) return AGL_BUILTIN_NONE;
-    return AGL_BUILTIN_NONE;
+    return agl_builtin_resolve(name, len);
 }
 
 /* ---- Loop context for break/continue ---- */

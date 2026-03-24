@@ -79,6 +79,17 @@ static AglSemaVar *scope_lookup(AglScope *scope, const char *name, int length) {
     return NULL;
 }
 
+/* Look up a variable in the current scope only (no parent chain). */
+static AglSemaVar *scope_lookup_local(AglScope *scope, const char *name, int length) {
+    for (int i = scope->var_count - 1; i >= 0; i--) {
+        if (agl_str_eq(scope->vars[i].name, scope->vars[i].name_length,
+                       name, length)) {
+            return &scope->vars[i];
+        }
+    }
+    return NULL;
+}
+
 /* ---- AST walking ---- */
 
 static void check_expr(AglSema *sema, AglNode *node);
@@ -305,11 +316,14 @@ static void check_stmt(AglSema *sema, AglNode *node) {
         break;
 
     case AGL_NODE_FN_DECL:
-        /* Register function in current scope before checking body */
-        scope_define(sema->scope,
-                     node->as.fn_decl.name,
-                     node->as.fn_decl.name_length,
-                     false, true, node->as.fn_decl.param_count);
+        /* Register function in current scope if not already pre-registered */
+        if (!scope_lookup_local(sema->scope, node->as.fn_decl.name,
+                                node->as.fn_decl.name_length)) {
+            scope_define(sema->scope,
+                         node->as.fn_decl.name,
+                         node->as.fn_decl.name_length,
+                         false, true, node->as.fn_decl.param_count);
+        }
         /* Check body in a new scope with params */
         scope_push(sema);
         for (int i = 0; i < node->as.fn_decl.param_count; i++) {
@@ -406,7 +420,20 @@ bool agl_sema_check(AglSema *sema, AglNode *program) {
     scope_define(sema->scope, "now", 3, false, true, 0);  /* variadic-like: 0 args */
     scope_define(sema->scope, "sleep", 5, false, true, 1);
 
-    /* Check all top-level declarations/statements */
+    /* Pass 1: Pre-register all top-level function names so that
+     * forward references and mutual recursion work correctly. */
+    for (int i = 0; i < program->as.program.decl_count; i++) {
+        AglNode *decl = program->as.program.decls[i];
+        if (decl && decl->kind == AGL_NODE_FN_DECL) {
+            scope_define(sema->scope,
+                         decl->as.fn_decl.name,
+                         decl->as.fn_decl.name_length,
+                         false, true, decl->as.fn_decl.param_count);
+        }
+    }
+
+    /* Pass 2: Check all declarations (function bodies can now reference
+     * any top-level function regardless of declaration order). */
     for (int i = 0; i < program->as.program.decl_count; i++) {
         check_stmt(sema, program->as.program.decls[i]);
         if (agl_error_occurred(sema->ctx)) return false;

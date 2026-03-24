@@ -582,6 +582,32 @@ AGL_TEST(test_vm_nested_break) {
     AGL_ASSERT_STR_EQ(ctx, captured_output, "1\n2\n3\n");
 }
 
+/* ---- forward reference tests ---- */
+
+AGL_TEST(test_vm_forward_ref) {
+    int r = vm_run_and_capture(
+        "fn a() -> int { return b() }\n"
+        "fn b() -> int { return 42 }\n"
+        "print(a())");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "42\n");
+}
+
+AGL_TEST(test_vm_mutual_recursion) {
+    int r = vm_run_and_capture(
+        "fn is_even(n: int) -> bool {\n"
+        "    if n == 0 { return true }\n"
+        "    return is_odd(n - 1)\n"
+        "}\n"
+        "fn is_odd(n: int) -> bool {\n"
+        "    if n == 0 { return false }\n"
+        "    return is_even(n - 1)\n"
+        "}\n"
+        "print(is_even(4))");
+    AGL_ASSERT_INT_EQ(ctx, r, 0);
+    AGL_ASSERT_STR_EQ(ctx, captured_output, "true\n");
+}
+
 /* ---- string interpolation tests ---- */
 
 AGL_TEST(test_vm_interpolation_basic) {
@@ -711,6 +737,10 @@ int main(void) {
     AGL_RUN_TEST(&ctx, test_vm_break_for);
     AGL_RUN_TEST(&ctx, test_vm_continue_for);
     AGL_RUN_TEST(&ctx, test_vm_nested_break);
+
+    /* Forward reference tests */
+    AGL_RUN_TEST(&ctx, test_vm_forward_ref);
+    AGL_RUN_TEST(&ctx, test_vm_mutual_recursion);
 
     /* String interpolation tests */
     AGL_RUN_TEST(&ctx, test_vm_interpolation_basic);

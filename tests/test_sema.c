@@ -93,6 +93,30 @@ AGL_TEST(test_sema_struct) {
         "print(p.x)"));
 }
 
+/* ---- Forward references ---- */
+
+AGL_TEST(test_sema_forward_ref) {
+    /* Forward reference: a calls b which is defined later */
+    AGL_ASSERT(ctx, sema_ok(
+        "fn a() -> int { return b() }\n"
+        "fn b() -> int { return 1 }\n"
+        "print(a())"));
+}
+
+AGL_TEST(test_sema_mutual_recursion) {
+    /* Mutual recursion: a calls b, b calls a */
+    AGL_ASSERT(ctx, sema_ok(
+        "fn is_even(n: int) -> bool {\n"
+        "    if n == 0 { return true }\n"
+        "    return is_odd(n - 1)\n"
+        "}\n"
+        "fn is_odd(n: int) -> bool {\n"
+        "    if n == 0 { return false }\n"
+        "    return is_even(n - 1)\n"
+        "}\n"
+        "print(is_even(4))"));
+}
+
 /* ---- Undefined variable errors ---- */
 
 AGL_TEST(test_sema_err_undefined_var) {
@@ -186,6 +210,10 @@ int main(void) {
     AGL_RUN_TEST(&ctx, test_sema_lambda);
     AGL_RUN_TEST(&ctx, test_sema_result_match);
     AGL_RUN_TEST(&ctx, test_sema_struct);
+
+    /* Forward references */
+    AGL_RUN_TEST(&ctx, test_sema_forward_ref);
+    AGL_RUN_TEST(&ctx, test_sema_mutual_recursion);
 
     /* Undefined variable */
     AGL_RUN_TEST(&ctx, test_sema_err_undefined_var);

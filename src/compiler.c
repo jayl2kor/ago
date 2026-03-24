@@ -35,6 +35,7 @@ typedef struct {
     int block_var_count;    /* vars defined in current block scope */
     LoopCtx loop_stack[MAX_LOOP_DEPTH];
     int loop_depth;
+    bool is_top_level;      /* true for the main compilation context */
 } Compiler;
 
 static void compile_expr(Compiler *c, AglNode *node);
@@ -250,6 +251,7 @@ static void compile_expr(Compiler *c, AglNode *node) {
         sub.scope_depth = 0;
         sub.block_var_count = 0;
         sub.loop_depth = 0;
+        sub.is_top_level = false;
         if (!sub.chunk) return;
 
         /* Compile function body */
@@ -552,6 +554,7 @@ static void compile_stmt(Compiler *c, AglNode *node) {
         sub.scope_depth = 0;
         sub.block_var_count = 0;
         sub.loop_depth = 0;
+        sub.is_top_level = false;
         if (!sub.chunk) return;
 
         if (node->as.fn_decl.body) {
@@ -574,7 +577,15 @@ static void compile_stmt(Compiler *c, AglNode *node) {
         fn_val.kind = VAL_FN;
         fn_val.as.fn = fn;
         int fn_idx = add_const(c, fn_val);
-        emit(c, AGL_OP_CLOSURE);
+        /* Top-level functions use CONST (no env capture) so that
+         * forward references and mutual recursion work: all top-level
+         * fns are defined before any bodies execute, and at call time
+         * they see the current env which contains all definitions. */
+        if (c->is_top_level) {
+            emit(c, AGL_OP_CONST);
+        } else {
+            emit(c, AGL_OP_CLOSURE);
+        }
         emit_u16(c, (uint16_t)fn_idx);
 
         int name_idx = add_string_const(c, node->as.fn_decl.name,
@@ -621,6 +632,7 @@ AglChunk *agl_compile(AglNode *program, AglCtx *ctx, AglArena *arena, AglGc *gc)
     c.scope_depth = 0;
     c.block_var_count = 0;
     c.loop_depth = 0;
+    c.is_top_level = true;
 
     for (int i = 0; i < program->as.program.decl_count; i++) {
         compile_stmt(&c, program->as.program.decls[i]);
